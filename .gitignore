@@ -1,6 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
+node_modules/
 /node_modules
 /.pnp
 .pnp.*
@@ -19,6 +20,20 @@
 
 # production
 /build
+web/dist/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+backend/.env
+
+# Screenshots / playwright
+*.png
+.playwright-mcp/
+
+# env files (local overrides)
+.env.local
 
 # misc
 .DS_Store
@@ -30,8 +45,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env*
+!.env.example
 
 # vercel
 .vercel
