@@ -72,7 +72,7 @@ export default function WelcomePage() {
 
   useEffect(() => {
     if (stage === 'intro') {
-      const t = setTimeout(() => setStage('features'), 4000)
+      const t = setTimeout(() => setStage('features'), 5500)
       return () => clearTimeout(t)
     }
   }, [stage])
@@ -100,16 +100,16 @@ export default function WelcomePage() {
         {stage === 'intro' && (
           <motion.div
             key="intro"
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.4 }}
             className="text-center max-w-xl relative z-10"
           >
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
+              initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
+              transition={{ delay: 0.1, duration: 0.4 }}
               className="flex items-center justify-center gap-3 mb-8"
             >
               <div
@@ -123,7 +123,7 @@ export default function WelcomePage() {
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
+              transition={{ delay: 0.2 }}
               className="text-sm font-semibold tracking-widest uppercase mb-4"
               style={{ color: '#C9A54C' }}
             >
@@ -133,7 +133,7 @@ export default function WelcomePage() {
             <motion.h1
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8, duration: 0.6 }}
+              transition={{ delay: 0.35, duration: 0.5 }}
               className="text-4xl sm:text-5xl font-bold text-white mb-5 leading-tight"
             >
               Hi Mum. <br />
@@ -143,7 +143,7 @@ export default function WelcomePage() {
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 1.2 }}
+              transition={{ delay: 0.7 }}
               className="text-blue-200 text-lg leading-relaxed mb-8"
             >
               I built something for you, for Paul, and for the whole team.
@@ -153,7 +153,7 @@ export default function WelcomePage() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 1.8 }}
+              transition={{ delay: 1.1 }}
               className="flex items-center justify-center gap-2"
               style={{ color: 'rgba(201,165,76,0.6)' }}
             >
@@ -165,7 +165,7 @@ export default function WelcomePage() {
             <motion.button
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 2.2 }}
+              transition={{ delay: 1.5 }}
               onClick={() => setStage('features')}
               className="mt-8 text-sm text-blue-300 hover:text-white transition-colors flex items-center gap-1 mx-auto"
             >
