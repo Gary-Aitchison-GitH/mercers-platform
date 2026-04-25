@@ -6,6 +6,7 @@ import Agents from './views/Agents'
 import Contact from './views/Contact'
 import Welcome from './views/Welcome'
 import Admin from './views/Admin'
+import Pitch from './views/Pitch'
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/pitch" element={<Pitch />} />
       </Routes>
     </LanguageProvider>
   )
