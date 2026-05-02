@@ -17,12 +17,15 @@ export default function ForgotPasswordPage() {
     setError('')
     setLoading(true)
     try {
-      await sendPasswordResetEmail(auth, email)
+      await sendPasswordResetEmail(auth, email, {
+        // After the user resets their password, Firebase redirects here
+        url: 'https://mercers-properties.vercel.app/login',
+        handleCodeInApp: false,
+      })
       setSent(true)
     } catch (err: unknown) {
       const code = (err as { code?: string }).code
       if (code === 'auth/user-not-found') {
-        // Don't reveal whether the email exists — show success anyway
         setSent(true)
       } else {
         setError('Could not send reset email. Please try again.')
