@@ -217,3 +217,20 @@ enum SenderType {
   AGENT
   AI
 }
+
+// ─── Feature Requests (agent → dev feedback loop) ─────────────────────────
+
+model FeatureRequest {
+  id          String   @id @default(cuid())
+  agentId     String?
+  agentName   String
+  agentEmail  String
+  type        String   @default("feature") // feature | bug | change | question
+  title       String
+  description String
+  priority    String   @default("medium")  // low | medium | high
+  status      String   @default("new")     // new | in-review | planned | done | declined
+  chatHistory Json     @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

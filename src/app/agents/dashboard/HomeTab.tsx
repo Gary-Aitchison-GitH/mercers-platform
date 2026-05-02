@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   Bot, Send, Plus, Check, X, Loader2, MessageSquare,
   Building2, Users, Eye, Bell, Sparkles, Megaphone,
-  BarChart3, FileSearch,
+  BarChart3, FileSearch, Wrench,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -25,6 +25,7 @@ const STARTER_PROMPTS = [
 const PALETTE = [
   { name: 'Home', icon: Bot, href: null, active: true, desc: 'Daily brief & pipeline' },
   { name: 'Marketing', icon: Megaphone, href: '/agents/marketing-ai', active: false, desc: 'Go-to-market tasks' },
+  { name: 'Dev Assist', icon: Wrench, href: '/agents/dev-assist', active: false, desc: 'Request features & report bugs' },
   { name: 'Client Match', icon: Users, href: null, active: false, desc: 'Match buyers to listings', soon: true },
   { name: 'Listing Copy', icon: FileSearch, href: null, active: false, desc: 'Write property descriptions', soon: true },
   { name: 'Analytics', icon: BarChart3, href: null, active: false, desc: 'Market insights', soon: true },
