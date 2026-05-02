@@ -73,11 +73,17 @@ Return JSON with exactly these fields:
     })
 
     try {
-      const text = result.content[0].type === 'text' ? result.content[0].text : ''
+      let text = result.content[0].type === 'text' ? result.content[0].text : ''
+      // Strip markdown code fences Claude sometimes wraps JSON in
+      text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
       const parsed = JSON.parse(text)
+      if (!parsed.title || !parsed.description) {
+        return Response.json({ error: 'Incomplete extract' }, { status: 422 })
+      }
       return Response.json(parsed)
-    } catch {
-      return Response.json({ error: 'Could not parse request' }, { status: 500 })
+    } catch (err) {
+      console.error('Dev assist extract parse error:', err)
+      return Response.json({ error: 'Could not parse request' }, { status: 422 })
     }
   }
 

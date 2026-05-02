@@ -76,6 +76,7 @@ export default function DevAssistPage() {
   const [extracted, setExtracted]         = useState<ExtractedRequest | null>(null)
   const [submitting, setSubmitting]       = useState(false)
   const [submitted, setSubmitted]         = useState(false)
+  const [extractError, setExtractError]   = useState<string | null>(null)
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
@@ -118,7 +119,7 @@ export default function DevAssistPage() {
       const res = await fetch('/api/portal/dev-assist', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: outgoing, action: 'chat' }),
+        body: JSON.stringify({ messages: outgoing.filter(m => m.content.trim() !== ''), action: 'chat' }),
       })
       if (!res.ok || !res.body) return
 
@@ -142,15 +143,24 @@ export default function DevAssistPage() {
     if (messages.length < 2) return
     setExtracting(true)
     setExtracted(null)
+    setExtractError(null)
     try {
       const token = await getToken()
+      // Filter out any empty assistant messages before sending to API
+      const cleanMessages = messages.filter(m => m.content.trim() !== '')
       const res = await fetch('/api/portal/dev-assist', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages, action: 'extract' }),
+        body: JSON.stringify({ messages: cleanMessages, action: 'extract' }),
       })
       const data = await res.json()
-      if (data.title) setExtracted(data)
+      if (data.title) {
+        setExtracted(data)
+      } else {
+        setExtractError('Could not extract — try adding a bit more detail in the chat first.')
+      }
+    } catch {
+      setExtractError('Something went wrong. Please try again.')
     } finally {
       setExtracting(false)
     }
@@ -164,14 +174,19 @@ export default function DevAssistPage() {
       const res = await fetch('/api/portal/requests', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...extracted, chatHistory: messages }),
+        body: JSON.stringify({ ...extracted, chatHistory: messages.filter(m => m.content.trim() !== '') }),
       })
       if (res.ok) {
         setExtracted(null)
         setMessages([])
         setSubmitted(true)
         await loadRequests()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setExtractError(err.error ?? 'Save failed — please try again.')
       }
+    } catch {
+      setExtractError('Network error — please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -391,6 +406,15 @@ export default function DevAssistPage() {
                 {submitting ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
                 {submitting ? 'Submitting…' : 'Submit to Gary'}
               </button>
+            </div>
+          )}
+
+          {/* Extract error */}
+          {extractError && (
+            <div className="mx-6 mb-3 rounded-xl px-4 py-3 text-sm flex items-center justify-between gap-3"
+              style={{ background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)', color: '#fca5a5' }}>
+              <span>{extractError}</span>
+              <button onClick={() => setExtractError(null)} style={{ color: '#f87171', flexShrink: 0 }}><X size={14} /></button>
             </div>
           )}
 
