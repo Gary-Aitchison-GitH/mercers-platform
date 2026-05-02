@@ -1,0 +1,219 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Users (buyers / sellers — public sign-up) ────────────────────────────
+
+model User {
+  id          String   @id @default(cuid())
+  firebaseUid String   @unique
+  email       String   @unique
+  name        String
+  role        String   @default("user")   // "user" | "agent" | "admin" | "dev"
+  clientType  ClientType @default(BUYER)
+  createdAt   DateTime @default(now())
+
+  client      Client?
+}
+
+// ─── Agents ────────────────────────────────────────────────────────────────
+
+model Agent {
+  id               String   @id @default(cuid())
+  firebaseUid      String?  @unique
+  name             String
+  role             String
+  email            String   @unique
+  phone            String
+  bio              String
+  regionalPresence String[]
+  specialties      String[]
+  image            String?
+  isActive         Boolean  @default(true)
+  inviteStatus     String   @default("pending") // "pending" | "accepted"
+  createdAt        DateTime @default(now())
+
+  listings          Listing[]
+  clientsAssigned   Client[]
+  referralsSent     Referral[]     @relation("ReferralFrom")
+  referralsReceived Referral[]     @relation("ReferralTo")
+  conversations     Conversation[]
+  aiMatchesAsAgent  AiMatch[]      @relation("MatchedToAgent")
+}
+
+// ─── Clients ───────────────────────────────────────────────────────────────
+
+model Client {
+  id              String     @id @default(cuid())
+  userId          String?    @unique
+  user            User?      @relation(fields: [userId], references: [id])
+  name            String
+  email           String?
+  phone           String?
+  clientType      ClientType @default(BUYER)
+  journeyStage    String     @default("new")
+  assignedAgentId String?
+  assignedAgent   Agent?     @relation(fields: [assignedAgentId], references: [id])
+  createdAt       DateTime   @default(now())
+
+  buyerRequirements BuyerRequirement[]
+  sellerListings    Listing[]
+  referrals         Referral[]
+  conversations     Conversation[]
+  aiMatches         AiMatch[]
+}
+
+enum ClientType {
+  BUYER
+  SELLER
+  BOTH
+}
+
+// ─── Properties ────────────────────────────────────────────────────────────
+
+model Listing {
+  id           String        @id @default(cuid())
+  title        String
+  location     String
+  area         String
+  type         PropertyType
+  listingType  ListingType
+  price        Float
+  currency     String        @default("USD")
+  priceDisplay String
+  size         String
+  description  String
+  images       String[]
+  featured     Boolean       @default(false)
+  status       ListingStatus @default(AVAILABLE)
+  agentId      String
+  agent        Agent         @relation(fields: [agentId], references: [id])
+  sellerId     String?
+  seller       Client?       @relation(fields: [sellerId], references: [id])
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  buyerMatches AiMatch[]
+}
+
+enum PropertyType {
+  RESIDENTIAL
+  COMMERCIAL
+  INDUSTRIAL
+  AGRICULTURAL
+}
+
+enum ListingType {
+  SALE
+  RENT
+}
+
+enum ListingStatus {
+  AVAILABLE
+  UNDER_OFFER
+  SOLD
+  LET
+}
+
+// ─── Buyer Requirements ────────────────────────────────────────────────────
+
+model BuyerRequirement {
+  id           String   @id @default(cuid())
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id])
+  propertyType String?
+  areas        String[]
+  minPrice     Float?
+  maxPrice     Float?
+  bedroomsMin  Int?
+  notes        String?
+  createdAt    DateTime @default(now())
+}
+
+// ─── Referrals ─────────────────────────────────────────────────────────────
+
+model Referral {
+  id           String         @id @default(cuid())
+  fromAgentId  String
+  fromAgent    Agent          @relation("ReferralFrom", fields: [fromAgentId], references: [id])
+  toAgentId    String
+  toAgent      Agent          @relation("ReferralTo", fields: [toAgentId], references: [id])
+  clientId     String?
+  client       Client?        @relation(fields: [clientId], references: [id])
+  reason       String?
+  splitPercent Float          @default(0)
+  status       ReferralStatus @default(PENDING)
+  createdAt    DateTime       @default(now())
+}
+
+enum ReferralStatus {
+  PENDING
+  ACCEPTED
+  COMPLETED
+  DECLINED
+}
+
+// ─── AI Matches ────────────────────────────────────────────────────────────
+
+model AiMatch {
+  id        String      @id @default(cuid())
+  matchType MatchType
+  clientId  String?
+  client    Client?     @relation(fields: [clientId], references: [id])
+  agentId   String?
+  agent     Agent?      @relation("MatchedToAgent", fields: [agentId], references: [id])
+  listingId String?
+  listing   Listing?    @relation(fields: [listingId], references: [id])
+  score     Float
+  reasoning Json
+  status    MatchStatus @default(SUGGESTED)
+  createdAt DateTime    @default(now())
+}
+
+enum MatchType {
+  CLIENT_AGENT
+  BUYER_PROPERTY
+}
+
+enum MatchStatus {
+  SUGGESTED
+  ACCEPTED
+  REJECTED
+}
+
+// ─── Conversations & Messages ──────────────────────────────────────────────
+
+model Conversation {
+  id          String    @id @default(cuid())
+  sessionId   String    @unique
+  clientId    String?
+  client      Client?   @relation(fields: [clientId], references: [id])
+  agentId     String?
+  agent       Agent?    @relation(fields: [agentId], references: [id])
+  locale      String    @default("en")
+  status      String    @default("active")
+  unreadCount Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  messages Message[]
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  senderType     SenderType
+  senderId       String?
+  content        String
+  createdAt      DateTime     @default(now())
+}
+
+enum SenderType {
+  CLIENT
+  AGENT
+  AI
+}
