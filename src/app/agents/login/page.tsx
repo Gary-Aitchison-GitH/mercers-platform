@@ -75,7 +75,7 @@ export default function AgentLoginPage() {
                 required
                 autoComplete="email"
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-navy-600)] text-sm"
-                placeholder="you@mercerskensington.com"
+                placeholder="you@example.com"
               />
             </div>
             <div>

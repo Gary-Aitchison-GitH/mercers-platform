@@ -33,9 +33,11 @@ model Agent {
   regionalPresence String[]
   specialties      String[]
   image            String?
-  isActive         Boolean  @default(true)
-  inviteStatus     String   @default("pending") // "pending" | "accepted"
-  createdAt        DateTime @default(now())
+  isActive         Boolean   @default(true)
+  inviteStatus     String    @default("pending") // "pending" | "active"
+  inviteToken      String?   @unique
+  inviteTokenExp   DateTime?
+  createdAt        DateTime  @default(now())
 
   listings          Listing[]
   clientsAssigned   Client[]

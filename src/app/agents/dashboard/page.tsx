@@ -155,9 +155,10 @@ export default function AgentDashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // invite form
-  const [invite, setInvite] = useState({ name: '', email: '', phone: '' })
+  const [invite, setInvite] = useState({ name: '', email: '', role: 'agent' })
   const [inviting, setInviting] = useState(false)
-  const [inviteResult, setInviteResult] = useState<{ link?: string; error?: string } | null>(null)
+  const [inviteResult, setInviteResult] = useState<{ link?: string; error?: string; emailSent?: boolean; emailError?: string | null } | null>(null)
+  const [agentAction, setAgentAction] = useState<{ id: string; type: 'resend' | 'remove' } | null>(null)
 
   const isAdmin = ['admin', 'dev'].includes(role ?? '')
 
@@ -335,7 +336,7 @@ export default function AgentDashboardPage() {
   }
 
   async function handleInvite() {
-    if (!invite.name || !invite.email) return
+    if (!invite.email) return
     setInviting(true)
     setInviteResult(null)
     try {
@@ -347,14 +348,48 @@ export default function AgentDashboardPage() {
       })
       const data = await res.json()
       if (data.inviteLink) {
-        setInviteResult({ link: data.inviteLink })
-        setInvite({ name: '', email: '', phone: '' })
+        setInviteResult({ link: data.inviteLink, emailSent: data.emailSent, emailError: data.emailError })
+        setInvite({ name: '', email: '', role: 'agent' })
         fetchAgents()
       } else {
         setInviteResult({ error: data.error || 'Invite failed' })
       }
     } finally {
       setInviting(false)
+    }
+  }
+
+  async function handleResendInvite(agentId: string) {
+    setAgentAction({ id: agentId, type: 'resend' })
+    try {
+      const token = await getToken()
+      const res = await fetch('/api/auth/resend-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId, inviterToken: token }),
+      })
+      const data = await res.json()
+      if (data.inviteLink) {
+        setInviteResult({ link: data.inviteLink, emailSent: data.emailSent, emailError: data.emailError })
+      }
+    } finally {
+      setAgentAction(null)
+    }
+  }
+
+  async function handleRemoveAgent(agentId: string, name: string) {
+    if (!confirm(`Remove ${name}? This deletes their account and cannot be undone.`)) return
+    setAgentAction({ id: agentId, type: 'remove' })
+    try {
+      const token = await getToken()
+      await fetch('/api/auth/remove-agent', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId, inviterToken: token }),
+      })
+      fetchAgents()
+    } finally {
+      setAgentAction(null)
     }
   }
 
@@ -577,38 +612,32 @@ export default function AgentDashboardPage() {
           <div className="space-y-8">
             {/* Invite form */}
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-              <h2 className="text-lg font-bold text-[var(--color-navy-900)] mb-1">Invite Agent</h2>
-              <p className="text-sm text-[var(--color-muted)] mb-5">They&apos;ll receive a password-setup link by email.</p>
+              <h2 className="text-lg font-bold text-[var(--color-navy-900)] mb-1">Add Agent</h2>
+              <p className="text-sm text-[var(--color-muted)] mb-5">Creates an account and generates a setup link to share directly with the agent.</p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                <div>
-                  <label className="block text-xs font-medium text-[var(--color-navy-700)] mb-1">Full name *</label>
-                  <input
-                    value={invite.name}
-                    onChange={e => setInvite(i => ({ ...i, name: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-navy-300)]"
-                    placeholder="Jane Smith"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-[var(--color-navy-700)] mb-1">Email address *</label>
-                  <input
-                    type="email"
-                    value={invite.email}
-                    onChange={e => setInvite(i => ({ ...i, email: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-navy-300)]"
-                    placeholder="jane@example.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-[var(--color-navy-700)] mb-1">Phone</label>
-                  <input
-                    value={invite.phone}
-                    onChange={e => setInvite(i => ({ ...i, phone: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-navy-300)]"
-                    placeholder="+263 77 123 4567"
-                  />
-                </div>
+              <div className="flex flex-wrap gap-3 mb-4">
+                <input
+                  type="text"
+                  value={invite.name}
+                  onChange={e => setInvite(i => ({ ...i, name: e.target.value }))}
+                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-navy-300)] w-40"
+                  placeholder="Dawn Brown"
+                />
+                <input
+                  type="text"
+                  value={invite.email}
+                  onChange={e => setInvite(i => ({ ...i, email: e.target.value }))}
+                  className="flex-1 min-w-48 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-navy-300)]"
+                  placeholder="dawn@mercers.co.zw"
+                />
+                <select
+                  value={invite.role}
+                  onChange={e => setInvite(i => ({ ...i, role: e.target.value }))}
+                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-navy-300)] bg-white"
+                >
+                  <option value="agent">Agent</option>
+                  <option value="admin">Admin</option>
+                </select>
               </div>
 
               <button
@@ -617,14 +646,22 @@ export default function AgentDashboardPage() {
                 className="flex items-center gap-2 bg-[var(--color-navy-800)] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-navy-700)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {inviting ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                Send invite
+                Create account
               </button>
 
               {inviteResult?.link && (
-                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-sm font-medium text-green-800 mb-1">Invite sent!</p>
-                  <p className="text-xs text-green-700 mb-2">Share this link with the agent (valid 1 hour):</p>
-                  <code className="text-xs break-all text-green-900 bg-green-100 px-2 py-1 rounded">{inviteResult.link}</code>
+                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
+                  <p className="text-sm font-medium text-green-800">Account created — copy and send this link to the agent:</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs break-all text-green-900 bg-green-100 px-3 py-2 rounded">{inviteResult.link}</code>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(inviteResult.link!)}
+                      className="shrink-0 text-xs bg-green-700 text-white px-3 py-2 rounded hover:bg-green-800 transition-colors"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <p className="text-xs text-green-600">Link expires in 1 hour. Use &quot;New link&quot; in the agent list below if it expires before they set up.</p>
                 </div>
               )}
               {inviteResult?.error && (
@@ -642,16 +679,34 @@ export default function AgentDashboardPage() {
               ) : (
                 <div className="space-y-2">
                   {agents.map((agent: AgentRecord) => (
-                    <div key={agent.id} className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between">
-                      <div>
+                    <div key={agent.id} className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between gap-4">
+                      <div className="min-w-0">
                         <p className="font-medium text-sm text-[var(--color-navy-900)]">{agent.name}</p>
                         <p className="text-xs text-[var(--color-muted)]">{agent.email}</p>
                       </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        agent.inviteStatus === 'accepted' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {agent.inviteStatus}
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          agent.inviteStatus === 'active' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                        }`}>
+                          {agent.inviteStatus === 'active' ? 'Active' : 'Pending'}
+                        </span>
+                        {agent.inviteStatus !== 'active' && (
+                          <button
+                            onClick={() => handleResendInvite(agent.id)}
+                            disabled={agentAction?.id === agent.id}
+                            className="text-xs text-[var(--color-navy-700)] hover:underline disabled:opacity-50"
+                          >
+                            {agentAction?.id === agent.id && agentAction.type === 'resend' ? 'Generating…' : 'New link'}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleRemoveAgent(agent.id, agent.name)}
+                          disabled={agentAction?.id === agent.id}
+                          className="text-xs text-red-500 hover:underline disabled:opacity-50"
+                        >
+                          {agentAction?.id === agent.id && agentAction.type === 'remove' ? 'Removing…' : 'Remove'}
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

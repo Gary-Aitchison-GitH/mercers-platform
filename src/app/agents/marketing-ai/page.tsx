@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth } from '@/lib/firebase'
 import type { MarketingTask, SignoffRequest, MarketingChatMessage, TaskStatus } from '@/lib/marketing-store'
 
 const PHASE_COLORS: Record<number, { accent: string; bg: string; border: string }> = {
@@ -50,7 +52,13 @@ export default function MarketingAIPage() {
     setChat(data.chatHistory || [])
   }
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => {
+    fetchData()
+    const unsub = onAuthStateChanged(auth, user => {
+      if (user?.displayName) { setAgentName(user.displayName); setNameSet(true) }
+    })
+    return unsub
+  }, [])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
