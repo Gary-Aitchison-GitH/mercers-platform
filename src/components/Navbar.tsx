@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Menu, X, Mountain } from 'lucide-react'
+import { Menu, X, Mountain, User } from 'lucide-react'
 import { useLanguage } from './LanguageContext'
+import { useAuth } from '@/lib/auth-context'
 import { Locale } from '@/lib/translations'
 
 const localeLabels: Record<Locale, string> = {
@@ -15,6 +16,7 @@ const localeLabels: Record<Locale, string> = {
 export default function Navbar() {
   const [open, setOpen] = useState(false)
   const { t, locale, setLocale } = useLanguage()
+  const { user, role, signOut } = useAuth()
 
   const navLinks = [
     { href: '/', label: t.nav.home },
@@ -71,6 +73,32 @@ export default function Navbar() {
               ))}
             </div>
 
+            {/* Auth */}
+            {user ? (
+              <div className="hidden md:flex items-center gap-2">
+                {['agent', 'admin', 'dev'].includes(role ?? '') && (
+                  <Link href="/agents/dashboard" className="text-sm font-medium text-gray-700 hover:text-[#1B3A6B] transition-colors">
+                    Portal
+                  </Link>
+                )}
+                <button
+                  onClick={() => signOut()}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                >
+                  <User size={15} />
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-[#1B3A6B] border border-[#1B3A6B] hover:bg-[#1B3A6B] hover:text-white transition-colors"
+              >
+                <User size={14} />
+                Sign in
+              </Link>
+            )}
+
             {/* CTA */}
             <Link
               href="/contact"
@@ -99,11 +127,34 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setOpen(false)}
-                className="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-navy-50 hover:text-[#1B3A6B] rounded-lg transition-colors"
+                className="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-[#1B3A6B] rounded-lg transition-colors"
               >
                 {link.label}
               </Link>
             ))}
+            <div className="pt-2 border-t border-gray-100 mt-2">
+              {user ? (
+                <>
+                  {['agent', 'admin', 'dev'].includes(role ?? '') && (
+                    <Link href="/agents/dashboard" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg">
+                      Agent Portal
+                    </Link>
+                  )}
+                  <button onClick={() => { signOut(); setOpen(false) }} className="block w-full text-left px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg">
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/login" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm font-medium text-[#1B3A6B] hover:bg-gray-50 rounded-lg">
+                    Sign in
+                  </Link>
+                  <Link href="/signup" onClick={() => setOpen(false)} className="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg">
+                    Create account
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>
