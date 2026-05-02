@@ -6,22 +6,13 @@
  *   npx tsx scripts/bootstrap-admin.ts dawn@email.com admin
  */
 
-import { existsSync, readFileSync } from 'fs'
 import { resolve } from 'path'
+import { config } from 'dotenv'
 import { initializeApp, cert, getApps } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 
-// Load .env.local
-const envPath = resolve(process.cwd(), '.env.local')
-if (existsSync(envPath)) {
-  for (const line of readFileSync(envPath, 'utf-8').split('\n')) {
-    const m = line.match(/^([^#=\s][^=]*)=(.*)$/)
-    if (m) {
-      const k = m[1].trim(); const v = m[2].trim().replace(/^["']|["']$/g, '')
-      if (!process.env[k]) process.env[k] = v
-    }
-  }
-}
+// Load .env.local (dotenv handles quotes, multiline escapes, and Windows line endings)
+config({ path: resolve(process.cwd(), '.env.local'), override: false })
 
 const [email, role] = process.argv.slice(2)
 if (!email || !role) {
