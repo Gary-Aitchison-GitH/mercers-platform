@@ -76,8 +76,8 @@ export default function SignupPage() {
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
             <div className="text-center mb-8">
-              <h1 className="text-2xl font-bold text-[var(--color-navy-900)]">Create your account</h1>
-              <p className="text-[var(--color-muted)] mt-2 text-sm">Join Mercers Kensington today</p>
+              <h1 className="text-2xl font-bold text-[var(--color-navy-900)]">Find your next property</h1>
+              <p className="text-[var(--color-muted)] mt-2 text-sm">Create a free account to save searches, get alerts, and connect with our agents.</p>
             </div>
 
             {error && (
