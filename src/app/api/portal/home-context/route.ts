@@ -33,11 +33,12 @@ export async function GET(req: NextRequest) {
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
 
-  const [activeListings, totalClients, viewingClients, newInquiries] = await Promise.all([
+  const [activeListings, totalClients, viewingClients, newInquiries, newRequests] = await Promise.all([
     db.listing.count({ where: { ...listingFilter, status: 'AVAILABLE' } }),
     db.client.count({ where: clientFilter }),
     db.client.count({ where: { ...clientFilter, journeyStage: 'viewing' } }),
     db.conversation.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
+    isAdmin ? db.featureRequest.count({ where: { status: 'new' } }) : Promise.resolve(0),
   ])
 
   const recentConvos = await db.conversation.findMany({
@@ -60,5 +61,6 @@ export async function GET(req: NextRequest) {
   return Response.json({
     pipeline: { activeListings, totalClients, viewingStage: viewingClients, newInquiries },
     conversations,
+    newRequests,
   })
 }

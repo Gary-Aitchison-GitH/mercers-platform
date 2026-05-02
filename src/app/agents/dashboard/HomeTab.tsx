@@ -36,6 +36,7 @@ const PALETTE = [
 export function HomeTab({ getToken, displayName }: { getToken: () => Promise<string>; displayName: string }) {
   const [pipeline, setPipeline] = useState<Pipeline>({ activeListings: 0, totalClients: 0, viewingStage: 0, newInquiries: 0 })
   const [conversations, setConversations] = useState<RecentConvo[]>([])
+  const [newRequests, setNewRequests] = useState(0)
   const [todos, setTodos] = useState<Todo[]>([])
   const [newTodo, setNewTodo] = useState('')
   const [messages, setMessages] = useState<ChatMsg[]>([])
@@ -71,6 +72,7 @@ export function HomeTab({ getToken, displayName }: { getToken: () => Promise<str
       const data = await res.json()
       if (data.pipeline) setPipeline(data.pipeline)
       if (data.conversations) setConversations(data.conversations)
+      if (typeof data.newRequests === 'number') setNewRequests(data.newRequests)
     } catch { /* non-fatal */ }
   }
 
@@ -391,15 +393,17 @@ export function HomeTab({ getToken, displayName }: { getToken: () => Promise<str
         <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#64748b' }}>
           AI Agent Palette
         </p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {PALETTE.map(({ name, icon: Icon, href, active, desc, soon }) => {
+            const isDevAssist = name === 'Dev Assist'
+            const showBadge = isDevAssist && newRequests > 0
             const card = (
               <div
                 className="relative rounded-xl p-3 border transition-all"
                 style={{
                   background: active ? 'rgba(201,165,76,0.08)' : 'rgba(27,58,107,0.4)',
-                  borderColor: active ? 'rgba(201,165,76,0.3)' : 'rgba(255,255,255,0.08)',
-                  boxShadow: active ? '0 0 0 1px rgba(201,165,76,0.15)' : 'none',
+                  borderColor: active ? 'rgba(201,165,76,0.3)' : showBadge ? 'rgba(248,113,113,0.3)' : 'rgba(255,255,255,0.08)',
+                  boxShadow: active ? '0 0 0 1px rgba(201,165,76,0.15)' : showBadge ? '0 0 0 1px rgba(248,113,113,0.15)' : 'none',
                   opacity: soon ? 0.55 : 1,
                   cursor: soon ? 'not-allowed' : href ? 'pointer' : 'default',
                 }}
@@ -412,7 +416,15 @@ export function HomeTab({ getToken, displayName }: { getToken: () => Promise<str
                     Soon
                   </span>
                 )}
-                <Icon size={18} style={{ color: active ? '#C9A54C' : '#93c5fd' }} />
+                {showBadge && (
+                  <span
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                    style={{ background: '#f87171', color: 'white' }}
+                  >
+                    {newRequests}
+                  </span>
+                )}
+                <Icon size={18} style={{ color: active ? '#C9A54C' : showBadge ? '#fca5a5' : '#93c5fd' }} />
                 <p className="text-xs font-semibold mt-2" style={{ color: active ? '#C9A54C' : 'white' }}>{name}</p>
                 <p className="text-[10px] mt-0.5" style={{ color: '#64748b' }}>{desc}</p>
               </div>

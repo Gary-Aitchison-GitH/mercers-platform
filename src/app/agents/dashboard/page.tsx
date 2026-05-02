@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, LogOut, Plus, Pencil, Trash2, Upload, X, Loader2, Building2, Users, ShieldCheck, Home } from 'lucide-react'
+import { ArrowLeft, LogOut, Plus, Pencil, Trash2, Upload, X, Loader2, Building2, Users, ShieldCheck, Home, Zap, Bug, Wrench, HelpCircle, ChevronDown } from 'lucide-react'
 import { HomeTab } from './HomeTab'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -57,6 +57,39 @@ type AgentRecord = {
   isActive: boolean
 }
 
+type FeatureRequest = {
+  id: string
+  agentName: string
+  agentEmail: string
+  type: string
+  title: string
+  description: string
+  priority: string
+  status: string
+  createdAt: string
+}
+
+const REQUEST_TYPE: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+  feature:  { label: 'Feature',  icon: Zap,         color: '#6366f1' },
+  bug:      { label: 'Bug',      icon: Bug,         color: '#ef4444' },
+  change:   { label: 'Change',   icon: Wrench,      color: '#3b82f6' },
+  question: { label: 'Question', icon: HelpCircle,  color: '#8b5cf6' },
+}
+
+const REQUEST_STATUS: Record<string, { label: string; classes: string }> = {
+  'new':       { label: 'New',       classes: 'bg-blue-50 text-blue-700' },
+  'in-review': { label: 'In Review', classes: 'bg-yellow-50 text-yellow-700' },
+  'planned':   { label: 'Planned',   classes: 'bg-purple-50 text-purple-700' },
+  'done':      { label: 'Done',      classes: 'bg-green-50 text-green-700' },
+  'declined':  { label: 'Declined',  classes: 'bg-red-50 text-red-600' },
+}
+
+const PRIORITY_CLASSES: Record<string, string> = {
+  low:    'bg-gray-100 text-gray-500',
+  medium: 'bg-amber-50 text-amber-700',
+  high:   'bg-red-50 text-red-600',
+}
+
 const defaultForm = {
   title: '',
   location: '',
@@ -107,7 +140,9 @@ export default function AgentDashboardPage() {
   const [listings, setListings] = useState<Listing[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [agents, setAgents] = useState<AgentRecord[]>([])
+  const [featureRequests, setFeatureRequests] = useState<FeatureRequest[]>([])
   const [fetching, setFetching] = useState(false)
+  const [updatingRequestId, setUpdatingRequestId] = useState<string | null>(null)
 
   // listing modal
   const [showModal, setShowModal] = useState(false)
@@ -142,7 +177,7 @@ export default function AgentDashboardPage() {
     if (!user) return
     if (activeTab === 'listings') fetchListings()
     if (activeTab === 'clients') fetchClients()
-    if (activeTab === 'admin') fetchAgents()
+    if (activeTab === 'admin') { fetchAgents(); fetchFeatureRequests() }
   }, [activeTab, user]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function getToken() {
@@ -181,6 +216,30 @@ export default function AgentDashboardPage() {
       setAgents(data.agents ?? [])
     } finally {
       setFetching(false)
+    }
+  }
+
+  async function fetchFeatureRequests() {
+    try {
+      const token = await getToken()
+      const res = await fetch('/api/portal/requests', { headers: { Authorization: `Bearer ${token}` } })
+      const data = await res.json()
+      setFeatureRequests(data.requests ?? [])
+    } catch { /* non-fatal */ }
+  }
+
+  async function updateRequestStatus(id: string, status: string) {
+    setUpdatingRequestId(id)
+    try {
+      const token = await getToken()
+      await fetch(`/api/portal/requests/${id}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      await fetchFeatureRequests()
+    } finally {
+      setUpdatingRequestId(null)
     }
   }
 
@@ -595,6 +654,78 @@ export default function AgentDashboardPage() {
                       </span>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+
+            {/* Feature Requests */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-bold text-[var(--color-navy-900)]">
+                  Feature Requests
+                  {featureRequests.filter(r => r.status === 'new').length > 0 && (
+                    <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-semibold">
+                      {featureRequests.filter(r => r.status === 'new').length} new
+                    </span>
+                  )}
+                </h3>
+                <Link href="/agents/dev-assist" className="text-xs text-[var(--color-navy-700)] hover:text-[var(--color-navy-900)] transition-colors">
+                  Open Dev Assist →
+                </Link>
+              </div>
+
+              {featureRequests.length === 0 ? (
+                <p className="text-sm text-[var(--color-muted)]">No requests yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {featureRequests.map(req => {
+                    const typeMeta = REQUEST_TYPE[req.type] ?? REQUEST_TYPE.feature
+                    const statusMeta = REQUEST_STATUS[req.status] ?? REQUEST_STATUS.new
+                    const TypeIcon = typeMeta.icon
+                    return (
+                      <div key={req.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="shrink-0 mt-0.5">
+                            <TypeIcon size={15} style={{ color: typeMeta.color }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <p className="text-sm font-semibold text-[var(--color-navy-900)] leading-snug">{req.title}</p>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_CLASSES[req.priority] ?? 'bg-gray-100 text-gray-500'}`}>
+                                  {req.priority}
+                                </span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusMeta.classes}`}>
+                                  {statusMeta.label}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-[var(--color-muted)] mb-2 leading-snug">{req.description}</p>
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-xs text-[var(--color-muted)]">
+                                {req.agentName} · {new Date(req.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                              </p>
+                              <div className="relative">
+                                <select
+                                  value={req.status}
+                                  disabled={updatingRequestId === req.id}
+                                  onChange={e => updateRequestStatus(req.id, e.target.value)}
+                                  className="text-xs border border-gray-200 rounded-lg pl-2 pr-6 py-1 appearance-none focus:outline-none focus:ring-1 focus:ring-[var(--color-navy-300)] bg-white text-[var(--color-navy-900)] cursor-pointer disabled:opacity-50"
+                                >
+                                  <option value="new">New</option>
+                                  <option value="in-review">In Review</option>
+                                  <option value="planned">Planned</option>
+                                  <option value="done">Done</option>
+                                  <option value="declined">Declined</option>
+                                </select>
+                                <ChevronDown size={11} className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-muted)]" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
