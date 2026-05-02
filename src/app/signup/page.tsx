@@ -6,6 +6,20 @@ import { useRouter } from 'next/navigation'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import Navbar from '@/components/Navbar'
+import PasswordInput, { validatePassword } from '@/components/PasswordInput'
+
+const strengthLabel = (p: string) => {
+  let score = 0
+  if (p.length >= 8) score++
+  if (/[A-Z]/.test(p)) score++
+  if (/[a-z]/.test(p)) score++
+  if (/[0-9]/.test(p)) score++
+  if (/[^A-Za-z0-9]/.test(p)) score++
+  if (score <= 2) return { label: 'Weak', color: 'bg-red-400', width: 'w-1/5' }
+  if (score === 3) return { label: 'Fair', color: 'bg-amber-400', width: 'w-3/5' }
+  if (score === 4) return { label: 'Good', color: 'bg-blue-400', width: 'w-4/5' }
+  return { label: 'Strong', color: 'bg-green-500', width: 'w-full' }
+}
 
 export default function SignupPage() {
   const router = useRouter()
@@ -16,9 +30,15 @@ export default function SignupPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  const strength = password.length > 0 ? strengthLabel(password) : null
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+
+    const pwError = validatePassword(password)
+    if (pwError) { setError(pwError); return }
+
     setLoading(true)
     try {
       const credential = await createUserWithEmailAndPassword(auth, email, password)
@@ -28,7 +48,7 @@ export default function SignupPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, clientType, idToken }),
+        body: JSON.stringify({ name, email, clientType, idToken }),
       })
 
       if (!res.ok) {
@@ -41,8 +61,6 @@ export default function SignupPage() {
       const code = (err as { code?: string }).code
       if (code === 'auth/email-already-in-use') {
         setError('An account with this email already exists.')
-      } else if (code === 'auth/weak-password') {
-        setError('Password must be at least 6 characters.')
       } else {
         setError((err as Error).message || 'Registration failed. Please try again.')
       }
@@ -76,6 +94,7 @@ export default function SignupPage() {
                   value={name}
                   onChange={e => setName(e.target.value)}
                   required
+                  autoComplete="name"
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-navy-600)] text-sm"
                   placeholder="Jane Smith"
                 />
@@ -87,21 +106,28 @@ export default function SignupPage() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   required
+                  autoComplete="email"
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-navy-600)] text-sm"
                   placeholder="you@example.com"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={setPassword}
                   required
-                  minLength={6}
-                  className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-navy-600)] text-sm"
-                  placeholder="Min. 6 characters"
+                  autoComplete="new-password"
+                  placeholder="Min. 8 chars, upper, lower, number, symbol"
                 />
+                {strength && (
+                  <div className="mt-2">
+                    <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${strength.color} ${strength.width}`} />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{strength.label}</p>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">I am a</label>
