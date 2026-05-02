@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  if (pathname === '/agents' || pathname === '/agents/login') {
+  if (pathname === '/agents' || pathname === '/agents/login' || pathname === '/agents/setup') {
     return NextResponse.next()
   }
 
