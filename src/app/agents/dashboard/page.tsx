@@ -3,9 +3,11 @@
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import Link from 'next/link'
+import { ArrowLeft, LogOut } from 'lucide-react'
 
 export default function AgentDashboardPage() {
-  const { user, role, loading } = useAuth()
+  const { user, role, loading, signOut } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -27,8 +29,24 @@ export default function AgentDashboardPage() {
   return (
     <div className="min-h-screen bg-[var(--color-surface)]">
       <header className="bg-[var(--color-navy-900)] text-white px-6 py-4 flex items-center justify-between">
-        <div className="font-bold text-lg">Mercers — Agent Portal</div>
-        <div className="text-sm text-blue-200">{user.email} · {role}</div>
+        <div className="flex items-center gap-4">
+          <Link href="/" className="flex items-center gap-1.5 text-sm text-blue-200 hover:text-white transition-colors">
+            <ArrowLeft size={15} />
+            Public site
+          </Link>
+          <span className="text-blue-800">|</span>
+          <div className="font-bold text-lg">Agent Portal</div>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-blue-200 hidden sm:block">{user.email} · {role}</span>
+          <button
+            onClick={() => signOut().then(() => router.push('/'))}
+            className="flex items-center gap-1.5 text-sm text-blue-200 hover:text-white transition-colors"
+          >
+            <LogOut size={14} />
+            Sign out
+          </button>
+        </div>
       </header>
       <main className="max-w-5xl mx-auto px-6 py-12">
         <h1 className="text-2xl font-bold text-[var(--color-navy-900)] mb-2">Dashboard</h1>
