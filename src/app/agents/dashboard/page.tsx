@@ -4,7 +4,8 @@ import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, LogOut, Plus, Pencil, Trash2, Upload, X, Loader2, Building2, Users, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, LogOut, Plus, Pencil, Trash2, Upload, X, Loader2, Building2, Users, ShieldCheck, Home } from 'lucide-react'
+import { HomeTab } from './HomeTab'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -102,7 +103,7 @@ export default function AgentDashboardPage() {
   const { user, role, loading, signOut } = useAuth()
   const router = useRouter()
 
-  const [activeTab, setActiveTab] = useState<'listings' | 'clients' | 'admin'>('listings')
+  const [activeTab, setActiveTab] = useState<'home' | 'listings' | 'clients' | 'admin'>('home')
   const [listings, setListings] = useState<Listing[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [agents, setAgents] = useState<AgentRecord[]>([])
@@ -335,13 +336,14 @@ export default function AgentDashboardPage() {
       <div className="border-b border-gray-200 bg-white">
         <div className="max-w-5xl mx-auto px-6 flex gap-0">
           {([
+            { key: 'home', label: 'Home', icon: Home },
             { key: 'listings', label: 'My Listings', icon: Building2 },
             { key: 'clients', label: 'My Clients', icon: Users },
             ...(isAdmin ? [{ key: 'admin', label: 'Admin', icon: ShieldCheck }] : []),
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
               key={key}
-              onClick={() => setActiveTab(key as 'listings' | 'clients' | 'admin')}
+              onClick={() => setActiveTab(key as 'home' | 'listings' | 'clients' | 'admin')}
               className={`flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === key
                   ? 'border-[var(--color-navy-700)] text-[var(--color-navy-900)]'
@@ -357,6 +359,14 @@ export default function AgentDashboardPage() {
 
       {/* Content */}
       <main className="max-w-5xl mx-auto px-6 py-8">
+        {/* ── Home tab ── */}
+        {activeTab === 'home' && (
+          <HomeTab
+            getToken={() => user!.getIdToken()}
+            displayName={user.displayName || user.email?.split('@')[0] || 'Agent'}
+          />
+        )}
+
         {/* ── Listings tab ── */}
         {activeTab === 'listings' && (
           <div>
