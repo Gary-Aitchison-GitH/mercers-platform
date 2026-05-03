@@ -79,6 +79,7 @@ export default function DevAssistPage() {
   const [extractError, setExtractError]   = useState<string | null>(null)
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null)
   const [activeTab, setActiveTab]         = useState<'chat' | 'requests'>('chat')
+  const [showResolved, setShowResolved]   = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   const isAdmin = ['admin', 'dev'].includes(role ?? '')
@@ -500,26 +501,26 @@ export default function DevAssistPage() {
             <p className="font-semibold text-white text-sm">
               {isAdmin ? 'All Requests' : 'My Requests'}
             </p>
-            <p className="text-xs mt-0.5" style={{ color: '#475569' }}>{requests.length} total</p>
+            <p className="text-xs mt-0.5" style={{ color: '#475569' }}>
+              {requests.filter(r => !['done', 'declined'].includes(r.status)).length} active
+            </p>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {requests.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-sm" style={{ color: '#334155' }}>No requests yet.</p>
-              </div>
-            ) : (
-              requests.map(req => {
-                const typeMeta = TYPE_META[req.type] ?? TYPE_META.feature
+            {(() => {
+              const active   = requests.filter(r => !['done', 'declined'].includes(r.status))
+              const resolved = requests.filter(r =>  ['done', 'declined'].includes(r.status))
+
+              const renderCard = (req: FeatureRequest) => {
+                const typeMeta   = TYPE_META[req.type]   ?? TYPE_META.feature
                 const statusMeta = STATUS_META[req.status] ?? STATUS_META.new
-                const TypeIcon = typeMeta.icon
+                const TypeIcon   = typeMeta.icon
                 return (
                   <div
                     key={req.id}
                     className="rounded-xl p-3 border"
                     style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.07)' }}
                   >
-                    {/* Type + priority */}
                     <div className="flex items-center gap-2 mb-1.5">
                       <TypeIcon size={13} style={{ color: typeMeta.color }} />
                       <span className="text-xs font-medium" style={{ color: typeMeta.color }}>{typeMeta.label}</span>
@@ -531,16 +532,13 @@ export default function DevAssistPage() {
                       </span>
                     </div>
 
-                    {/* Title */}
                     <p className="text-sm font-medium text-white leading-snug mb-1">{req.title}</p>
                     <p className="text-xs leading-snug mb-2" style={{ color: '#475569' }}>{req.description}</p>
 
-                    {/* Agent (admin view) */}
                     {isAdmin && (
                       <p className="text-xs mb-2" style={{ color: '#334155' }}>From: {req.agentName}</p>
                     )}
 
-                    {/* Status */}
                     <div className="flex items-center justify-between gap-2">
                       <span
                         className="inline-flex items-center gap-1 text-xs rounded-full px-2 py-0.5"
@@ -576,8 +574,48 @@ export default function DevAssistPage() {
                     </div>
                   </div>
                 )
-              })
-            )}
+              }
+
+              return (
+                <>
+                  {active.length === 0 && resolved.length === 0 && (
+                    <div className="text-center py-12">
+                      <p className="text-sm" style={{ color: '#334155' }}>No requests yet.</p>
+                    </div>
+                  )}
+
+                  {active.length === 0 && resolved.length > 0 && (
+                    <div className="text-center py-8">
+                      <p className="text-sm" style={{ color: '#334155' }}>No active requests.</p>
+                    </div>
+                  )}
+
+                  {active.map(renderCard)}
+
+                  {resolved.length > 0 && (
+                    <div className="pt-2">
+                      <button
+                        onClick={() => setShowResolved(v => !v)}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors"
+                        style={{ color: '#475569' }}
+                      >
+                        <ChevronDown
+                          size={13}
+                          className="transition-transform"
+                          style={{ transform: showResolved ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                        />
+                        {showResolved ? 'Hide' : 'Show'} completed &amp; declined ({resolved.length})
+                      </button>
+                      {showResolved && (
+                        <div className="mt-2 space-y-2 opacity-60">
+                          {resolved.map(renderCard)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
         </div>
       </div>
