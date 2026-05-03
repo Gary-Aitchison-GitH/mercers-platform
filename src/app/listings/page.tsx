@@ -44,7 +44,7 @@ export default function ListingsPage() {
       <section className="mercers-gradient py-14 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-4xl font-bold text-white mb-3">{t.listings.title}</h1>
-          <p className="text-blue-200 mb-8">Commercial, industrial, agricultural & residential across Zimbabwe</p>
+          <p className="text-blue-200 mb-8">{t.listings.subtitle}</p>
 
           {/* Search */}
           <div className="flex gap-3 max-w-2xl">
@@ -85,7 +85,7 @@ export default function ListingsPage() {
 
           <div className="flex gap-2 shrink-0">
             {[
-              { key: 'all' as const, label: 'All' },
+              { key: 'all' as const, label: t.listings.allType },
               { key: 'sale' as const, label: t.listings.forSale },
               { key: 'rent' as const, label: t.listings.forRent },
             ].map(({ key, label }) => (
@@ -107,7 +107,7 @@ export default function ListingsPage() {
       {/* Grid */}
       <main className="flex-1 py-12 px-4 sm:px-6 lg:px-8" style={{ background: '#F9F8F5' }}>
         <div className="max-w-7xl mx-auto">
-          <p className="text-sm text-gray-500 mb-6">{filtered.length} {filtered.length === 1 ? 'listing' : 'listings'} found</p>
+          <p className="text-sm text-gray-500 mb-6">{filtered.length} {filtered.length === 1 ? t.listings.foundSingular : t.listings.found}</p>
           {filtered.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filtered.map(listing => (
@@ -116,9 +116,9 @@ export default function ListingsPage() {
             </div>
           ) : (
             <div className="text-center py-24">
-              <p className="text-gray-400 text-lg">No listings found</p>
+              <p className="text-gray-400 text-lg">{t.listings.noFound}</p>
               <button onClick={() => { setSearch(''); setFilter('all'); setListingType('all') }} className="mt-4 text-sm font-medium" style={{ color: '#1B3A6B' }}>
-                Clear filters
+                {t.listings.clearFilters}
               </button>
             </div>
           )}

@@ -78,6 +78,7 @@ export default function DevAssistPage() {
   const [submitted, setSubmitted]         = useState(false)
   const [extractError, setExtractError]   = useState<string | null>(null)
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null)
+  const [activeTab, setActiveTab]         = useState<'chat' | 'requests'>('chat')
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   const isAdmin = ['admin', 'dev'].includes(role ?? '')
@@ -256,11 +257,43 @@ export default function DevAssistPage() {
         </div>
       </header>
 
+      {/* Mobile tab bar */}
+      <div className="flex md:hidden border-b shrink-0" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+        <button
+          onClick={() => setActiveTab('chat')}
+          className="flex-1 py-3 text-sm font-medium transition-colors"
+          style={{
+            color: activeTab === 'chat' ? '#C9A54C' : '#475569',
+            borderBottom: activeTab === 'chat' ? '2px solid #C9A54C' : '2px solid transparent',
+          }}
+        >
+          Chat
+        </button>
+        <button
+          onClick={() => setActiveTab('requests')}
+          className="flex-1 py-3 text-sm font-medium transition-colors"
+          style={{
+            color: activeTab === 'requests' ? '#C9A54C' : '#475569',
+            borderBottom: activeTab === 'requests' ? '2px solid #C9A54C' : '2px solid transparent',
+          }}
+        >
+          {isAdmin ? 'All Requests' : 'My Requests'}
+          {requests.length > 0 && (
+            <span
+              className="ml-1.5 text-xs rounded-full px-1.5 py-0.5"
+              style={{ background: 'rgba(201,165,76,0.15)', color: '#C9A54C' }}
+            >
+              {requests.length}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Main layout */}
       <div className="flex flex-1 overflow-hidden">
 
         {/* ── Chat area ── */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className={`flex-col min-w-0 flex-1 ${activeTab === 'chat' ? 'flex' : 'hidden'} md:flex`}>
 
           {/* Chat header */}
           <div className="px-6 py-5 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
@@ -460,10 +493,10 @@ export default function DevAssistPage() {
 
         {/* ── Requests sidebar ── */}
         <div
-          className="w-80 shrink-0 border-l flex flex-col overflow-hidden"
+          className={`w-full md:w-80 shrink-0 md:border-l flex-col overflow-hidden ${activeTab === 'requests' ? 'flex' : 'hidden'} md:flex`}
           style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}
         >
-          <div className="px-5 py-5 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+          <div className="hidden md:block px-5 py-5 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
             <p className="font-semibold text-white text-sm">
               {isAdmin ? 'All Requests' : 'My Requests'}
             </p>

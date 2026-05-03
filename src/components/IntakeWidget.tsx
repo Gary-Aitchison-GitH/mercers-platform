@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowRight, Phone, Mail, MapPin, Sparkles, ChevronRight, RotateCcw } from 'lucide-react'
+import { Phone, Mail, MapPin, Sparkles, ChevronRight, RotateCcw } from 'lucide-react'
 import { AgentMatch } from '@/lib/matching'
 import { Agent } from '@/lib/data/agents'
+import { useLanguage } from './LanguageContext'
 
 type Step = 'intent' | 'type' | 'area' | 'result'
 
-const PROPERTY_TYPES = ['Residential', 'Commercial', 'Industrial', 'Agricultural']
 const AREAS = ['Harare', 'Marondera', 'Bulawayo', 'Victoria Falls', 'Bindura', 'Zvishavane', 'Chiredzi', 'Other']
 
 interface ResultData {
@@ -17,6 +17,7 @@ interface ResultData {
 }
 
 export default function IntakeWidget() {
+  const { t } = useLanguage()
   const [step, setStep] = useState<Step>('intent')
   const [intent, setIntent] = useState<'buy' | 'rent' | 'sell' | null>(null)
   const [propertyType, setPropertyType] = useState('')
@@ -25,6 +26,13 @@ export default function IntakeWidget() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ResultData | null>(null)
   const [error, setError] = useState('')
+
+  const propertyTypes = [
+    { key: 'Residential', label: t.listings.filters.residential },
+    { key: 'Commercial', label: t.listings.filters.commercial },
+    { key: 'Industrial', label: t.listings.filters.industrial },
+    { key: 'Agricultural', label: t.listings.filters.agricultural },
+  ]
 
   const reset = () => {
     setStep('intent')
@@ -51,7 +59,7 @@ export default function IntakeWidget() {
       setResult(data)
       setStep('result')
     } catch {
-      setError('Something went wrong. Please try again.')
+      setError(t.intake.error)
     } finally {
       setLoading(false)
     }
@@ -65,8 +73,8 @@ export default function IntakeWidget() {
           <Sparkles size={18} style={{ color: '#C9A54C' }} />
         </div>
         <div>
-          <p className="font-bold text-white text-sm">Find Your Agent</p>
-          <p className="text-xs text-blue-200">AI-matched to your exact needs</p>
+          <p className="font-bold text-white text-sm">{t.intake.title}</p>
+          <p className="text-xs text-blue-200">{t.intake.subtitle}</p>
         </div>
         {step !== 'intent' && step !== 'result' && (
           <button onClick={reset} className="ml-auto text-blue-300 hover:text-white transition-colors">
@@ -80,16 +88,20 @@ export default function IntakeWidget() {
         {/* Step: Intent */}
         {step === 'intent' && (
           <div>
-            <p className="text-sm font-semibold text-gray-700 mb-4">What are you looking to do?</p>
+            <p className="text-sm font-semibold text-gray-700 mb-4">{t.intake.intentQuestion}</p>
             <div className="grid grid-cols-3 gap-3">
-              {(['buy', 'rent', 'sell'] as const).map(opt => (
+              {([
+                { key: 'buy', label: t.intake.buy },
+                { key: 'rent', label: t.intake.rent },
+                { key: 'sell', label: t.intake.sell },
+              ] as const).map(({ key, label }) => (
                 <button
-                  key={opt}
-                  onClick={() => { setIntent(opt); setStep('type') }}
-                  className="py-3 rounded-xl text-sm font-semibold border-2 transition-all capitalize hover:border-[#1B3A6B] hover:text-[#1B3A6B]"
+                  key={key}
+                  onClick={() => { setIntent(key); setStep('type') }}
+                  className="py-3 rounded-xl text-sm font-semibold border-2 transition-all hover:border-[#1B3A6B] hover:text-[#1B3A6B]"
                   style={{ borderColor: '#e5e7eb', color: '#6b7280' }}
                 >
-                  {opt === 'buy' ? '🏠 Buy' : opt === 'rent' ? '🔑 Rent' : '📋 Sell'}
+                  {label}
                 </button>
               ))}
             </div>
@@ -99,16 +111,16 @@ export default function IntakeWidget() {
         {/* Step: Property Type */}
         {step === 'type' && (
           <div>
-            <p className="text-sm font-semibold text-gray-700 mb-4">What type of property?</p>
+            <p className="text-sm font-semibold text-gray-700 mb-4">{t.intake.typeQuestion}</p>
             <div className="grid grid-cols-2 gap-2">
-              {PROPERTY_TYPES.map(type => (
+              {propertyTypes.map(({ key, label }) => (
                 <button
-                  key={type}
-                  onClick={() => { setPropertyType(type); setStep('area') }}
+                  key={key}
+                  onClick={() => { setPropertyType(key); setStep('area') }}
                   className="py-2.5 px-4 rounded-xl text-sm font-medium border-2 text-left transition-all hover:border-[#1B3A6B] hover:text-[#1B3A6B]"
                   style={{ borderColor: '#e5e7eb', color: '#6b7280' }}
                 >
-                  {type}
+                  {label}
                 </button>
               ))}
             </div>
@@ -119,7 +131,7 @@ export default function IntakeWidget() {
         {step === 'area' && (
           <div className="space-y-4">
             <div>
-              <p className="text-sm font-semibold text-gray-700 mb-3">Which area?</p>
+              <p className="text-sm font-semibold text-gray-700 mb-3">{t.intake.areaQuestion}</p>
               <div className="grid grid-cols-2 gap-2 mb-3">
                 {AREAS.map(a => (
                   <button
@@ -138,12 +150,12 @@ export default function IntakeWidget() {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Budget (optional)</label>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">{t.intake.budgetLabel}</label>
               <input
                 type="text"
                 value={budget}
                 onChange={e => setBudget(e.target.value)}
-                placeholder="e.g. USD 500,000 or USD 2,000/pm"
+                placeholder={t.intake.budgetPlaceholder}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-[#1B3A6B] transition-colors"
               />
             </div>
@@ -157,12 +169,12 @@ export default function IntakeWidget() {
               {loading ? (
                 <>
                   <span className="animate-spin inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
-                  Matching you now...
+                  {t.intake.matching}
                 </>
               ) : (
                 <>
                   <Sparkles size={15} />
-                  Find My Agent
+                  {t.intake.findAgent}
                 </>
               )}
             </button>
@@ -186,7 +198,7 @@ export default function IntakeWidget() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-bold text-sm" style={{ color: '#1B3A6B' }}>{result.primaryMatch.agent.name}</p>
                     <span className="text-xs px-2 py-0.5 rounded-full font-semibold text-white" style={{ background: '#C9A54C' }}>
-                      Best Match
+                      {t.intake.bestMatch}
                     </span>
                   </div>
                   <p className="text-xs font-medium mb-1" style={{ color: '#C9A54C' }}>{result.primaryMatch.agent.role}</p>
@@ -214,7 +226,7 @@ export default function IntakeWidget() {
             {/* Matched listings */}
             {result.primaryMatch.matchedListings?.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Relevant Listings</p>
+                <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">{t.intake.relevantListings}</p>
                 <div className="space-y-1.5">
                   {result.primaryMatch.matchedListings.slice(0, 2).map((l) => (
                     <div key={l.id} className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
@@ -230,7 +242,7 @@ export default function IntakeWidget() {
             {/* Alternatives */}
             {result.alternatives?.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wide">Also available</p>
+                <p className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wide">{t.intake.alsoAvailable}</p>
                 <div className="space-y-2">
                   {result.alternatives.map((alt) => (
                     <a
@@ -259,7 +271,7 @@ export default function IntakeWidget() {
               onClick={reset}
               className="w-full py-2 text-xs font-semibold rounded-xl border border-gray-200 text-gray-500 hover:border-gray-300 transition-colors flex items-center justify-center gap-1.5"
             >
-              <RotateCcw size={12} /> Start again
+              <RotateCcw size={12} /> {t.intake.startAgain}
             </button>
           </div>
         )}

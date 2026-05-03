@@ -76,19 +76,19 @@ export default function ContactPage() {
               {sent ? (
                 <div className="flex flex-col items-center justify-center h-full text-center py-12">
                   <CheckCircle size={48} style={{ color: '#1B3A6B' }} className="mb-4" />
-                  <h3 className="text-xl font-bold mb-2" style={{ color: '#1B3A6B' }}>Message Sent!</h3>
-                  <p className="text-gray-500 text-sm">One of our agents will be in touch shortly.</p>
+                  <h3 className="text-xl font-bold mb-2" style={{ color: '#1B3A6B' }}>{t.contact.messageSent}</h3>
+                  <p className="text-gray-500 text-sm">{t.contact.messageSentBody}</p>
                   <button
                     onClick={() => { setSent(false); setForm({ name: '', email: '', phone: '', message: '' }) }}
                     className="mt-6 text-sm font-semibold"
                     style={{ color: '#C9A54C' }}
                   >
-                    Send another message
+                    {t.contact.sendAnother}
                   </button>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <h2 className="text-xl font-bold mb-6" style={{ color: '#1B3A6B' }}>General Enquiry</h2>
+                  <h2 className="text-xl font-bold mb-6" style={{ color: '#1B3A6B' }}>{t.contact.enquiry}</h2>
                   {[
                     { key: 'name', label: t.contact.name, type: 'text' },
                     { key: 'email', label: t.contact.email, type: 'email' },
@@ -122,7 +122,7 @@ export default function ContactPage() {
                     style={{ background: '#1B3A6B' }}
                   >
                     <Send size={15} />
-                    {sending ? 'Sending...' : t.contact.send}
+                    {sending ? t.contact.sending : t.contact.send}
                   </button>
                 </form>
               )}
@@ -131,8 +131,8 @@ export default function ContactPage() {
 
           {/* Contact an agent directly */}
           <div>
-            <h2 className="text-2xl font-bold mb-2" style={{ color: '#1B3A6B' }}>Contact an Agent Directly</h2>
-            <p className="text-gray-500 text-sm mb-8">Prefer to speak to someone specific? Reach out directly — every agent handles any property type and can refer you to the ideal colleague if needed.</p>
+            <h2 className="text-2xl font-bold mb-2" style={{ color: '#1B3A6B' }}>{t.contact.contactDirect}</h2>
+            <p className="text-gray-500 text-sm mb-8">{t.contact.contactDirectBody}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {agents.map(agent => (
                 <AgentCard key={agent.id} agent={agent} />

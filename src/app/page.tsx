@@ -19,10 +19,10 @@ export default function HomePage() {
   const featured = getFeaturedListings()
 
   const stats = [
-    { label: 'Active Listings', value: '9+', icon: MapPin },
-    { label: 'Years Experience', value: '20+', icon: TrendingUp },
-    { label: 'Agents Nationwide', value: '4', icon: Users },
-    { label: 'Council Member', value: 'EACZ', icon: Shield },
+    { label: t.stats.activeListings, value: '9+', icon: MapPin },
+    { label: t.stats.yearsExperience, value: '20+', icon: TrendingUp },
+    { label: t.stats.agentsNationwide, value: '4', icon: Users },
+    { label: t.stats.councilMember, value: 'EACZ', icon: Shield },
   ]
 
   return (
@@ -38,7 +38,7 @@ export default function HomePage() {
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-6" style={{ background: 'rgba(201,165,76,0.2)', color: '#C9A54C', border: '1px solid rgba(201,165,76,0.4)' }}>
               <Shield size={12} />
-              Estate Agents Council of Zimbabwe
+              {t.hero.councilBadge}
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
               {t.hero.tagline}
@@ -104,16 +104,16 @@ export default function HomePage() {
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: '#eef4fd', color: '#1B3A6B' }}>
                 <Users size={12} />
-                AI Agent Matching
+                {t.hero.agentMatchingLabel}
               </div>
               <h2 className="text-3xl font-bold mb-4" style={{ color: '#1B3A6B' }}>
-                The right agent,<br />matched to you.
+                {t.hero.agentMatchingTitle}
               </h2>
               <p className="text-gray-500 leading-relaxed mb-4">
-                Our AI analyses your property needs and matches you directly to the Mercers agent best suited to help — based on their area knowledge, specialties, and track record.
+                {t.hero.agentMatchingBody}
               </p>
               <p className="text-sm text-gray-400">
-                Not happy with the match? Every agent can refer you to a colleague — you always end up with the right person.
+                {t.hero.agentMatchingNote}
               </p>
             </div>
             <div>
@@ -129,7 +129,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between mb-10">
             <div>
               <h2 className="text-3xl font-bold mb-2" style={{ color: '#1B3A6B' }}>{t.listings.title}</h2>
-              <p className="text-gray-500 text-sm">Handpicked properties across Zimbabwe</p>
+              <p className="text-gray-500 text-sm">{t.listings.subtitle}</p>
             </div>
             <Link
               href="/listings"
@@ -192,7 +192,7 @@ export default function HomePage() {
                   <Users size={14} className="mt-0.5 shrink-0" style={{ color: '#C9A54C' }} />
                   <div>
                     <p className="font-semibold text-white">{t.agents.nationwide}</p>
-                    <p>Harare · Marondera · Victoria Falls · and beyond</p>
+                    <p>{t.agents.locations}</p>
                   </div>
                 </div>
               </div>

@@ -34,6 +34,9 @@ export default function AgentLoginPage() {
       const idToken = await credential.user.getIdToken()
       document.cookie = `fb-token=${idToken}; path=/; max-age=3600; SameSite=Strict`
 
+      // Mark agent active on login (covers setup-page flow and any manual path)
+      fetch('/api/auth/activate', { method: 'POST', headers: { Authorization: `Bearer ${idToken}` } }).catch(() => {})
+
       router.push('/agents/dashboard')
     } catch (err: unknown) {
       const code = (err as { code?: string }).code

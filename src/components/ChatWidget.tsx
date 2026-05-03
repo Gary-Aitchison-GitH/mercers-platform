@@ -130,7 +130,7 @@ export default function ChatWidget() {
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
                 <p className="text-xs opacity-75">
-                  {garyOnline ? 'Property manager is live' : t.chat.subtitle}
+                  {garyOnline ? t.chat.garyOnline : t.chat.subtitle}
                 </p>
               </div>
             </div>
