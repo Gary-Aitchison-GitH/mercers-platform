@@ -18,6 +18,8 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
 })
 
+const ROLE_KEY = 'mp_last_role'
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [role, setRole] = useState<string | null>(null)
@@ -33,8 +35,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const token = await firebaseUser.getIdTokenResult()
           if (thisGen !== gen) return
+          const resolvedRole = (token.claims.role as string) ?? null
+          if (resolvedRole) localStorage.setItem(ROLE_KEY, resolvedRole)
           setUser(firebaseUser)
-          setRole((token.claims.role as string) ?? null)
+          setRole(resolvedRole)
         } catch {
           if (thisGen !== gen) return
           setUser(null)
@@ -42,14 +46,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setLoading(false)
       } else {
-        // Firebase emits null on initial load before reading from IndexedDB, and
-        // during token refresh. Re-enable the loading guard immediately so the
-        // dashboard guard (which redirects on loading=false + user=null) doesn't
-        // fire prematurely. Wait 3s — if the real user callback arrives first,
-        // the generation counter discards this branch entirely.
+        // Firebase emits null on initial load before restoring session from IndexedDB,
+        // and again during token refresh. Keep loading=true so route guards don't fire.
+        // The generation counter discards this branch if the real user callback arrives first.
+        // Grace period: 5s hard wait + localStorage "last known role" as a secondary guard.
         setLoading(true)
-        await new Promise(resolve => setTimeout(resolve, 3000))
+        const lastRole = typeof window !== 'undefined' ? localStorage.getItem(ROLE_KEY) : null
+        const grace = lastRole ? 5000 : 2000
+        await new Promise(resolve => setTimeout(resolve, grace))
         if (thisGen !== gen) return
+        localStorage.removeItem(ROLE_KEY)
         setUser(null)
         setRole(null)
         setLoading(false)

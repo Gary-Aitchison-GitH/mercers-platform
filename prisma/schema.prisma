@@ -39,12 +39,13 @@ model Agent {
   inviteTokenExp   DateTime?
   createdAt        DateTime  @default(now())
 
-  listings          Listing[]
-  clientsAssigned   Client[]
-  referralsSent     Referral[]     @relation("ReferralFrom")
-  referralsReceived Referral[]     @relation("ReferralTo")
-  conversations     Conversation[]
-  aiMatchesAsAgent  AiMatch[]      @relation("MatchedToAgent")
+  listings             Listing[]
+  clientsAssigned      Client[]
+  referralsSent        Referral[]          @relation("ReferralFrom")
+  referralsReceived    Referral[]          @relation("ReferralTo")
+  conversations        Conversation[]
+  aiMatchesAsAgent     AiMatch[]           @relation("MatchedToAgent")
+  threadParticipations ThreadParticipant[]
 }
 
 // ─── Clients ───────────────────────────────────────────────────────────────
@@ -62,11 +63,12 @@ model Client {
   assignedAgent   Agent?     @relation(fields: [assignedAgentId], references: [id])
   createdAt       DateTime   @default(now())
 
-  buyerRequirements BuyerRequirement[]
-  sellerListings    Listing[]
-  referrals         Referral[]
-  conversations     Conversation[]
-  aiMatches         AiMatch[]
+  buyerRequirements    BuyerRequirement[]
+  sellerListings       Listing[]
+  referrals            Referral[]
+  conversations        Conversation[]
+  aiMatches            AiMatch[]
+  threadParticipations ThreadParticipant[]
 }
 
 enum ClientType {
@@ -104,6 +106,7 @@ model Listing {
   updatedAt    DateTime      @updatedAt
 
   buyerMatches AiMatch[]
+  threads      Thread[]
 }
 
 enum PropertyType {
@@ -222,6 +225,75 @@ enum SenderType {
   CLIENT
   AGENT
   AI
+}
+
+// ─── Threads & Messaging ──────────────────────────────────────────────────────
+
+model Thread {
+  id        String     @id @default(cuid())
+  type      ThreadType
+  title     String?
+  listingId String?
+  listing   Listing?   @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  status    String     @default("active")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  participants ThreadParticipant[]
+  messages     ThreadMessage[]
+  milestones   Milestone[]
+}
+
+enum ThreadType {
+  LISTING
+  GENERAL
+}
+
+model ThreadParticipant {
+  id              String          @id @default(cuid())
+  threadId        String
+  thread          Thread          @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  participantType ParticipantType
+  agentId         String?
+  agent           Agent?          @relation(fields: [agentId], references: [id])
+  clientId        String?
+  client          Client?         @relation(fields: [clientId], references: [id])
+  joinedAt        DateTime        @default(now())
+}
+
+enum ParticipantType {
+  AGENT
+  CLIENT
+}
+
+model ThreadMessage {
+  id         String     @id @default(cuid())
+  threadId   String
+  thread     Thread     @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  senderType SenderType
+  senderId   String?
+  senderName String?
+  content    String
+  createdAt  DateTime   @default(now())
+}
+
+model Milestone {
+  id          String          @id @default(cuid())
+  threadId    String
+  thread      Thread          @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  status      MilestoneStatus @default(PENDING)
+  dueDate     DateTime?
+  completedAt DateTime?
+  sortOrder   Int             @default(0)
+  createdAt   DateTime        @default(now())
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETE
 }
 
 // ─── Feature Requests (agent → dev feedback loop) ─────────────────────────

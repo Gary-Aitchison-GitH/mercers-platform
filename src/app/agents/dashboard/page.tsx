@@ -4,9 +4,10 @@ import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, LogOut, Plus, Pencil, Trash2, Upload, X, Loader2, Building2, Users, ShieldCheck, Home, Zap, Bug, Wrench, HelpCircle, ChevronDown, Sparkles, UserCircle } from 'lucide-react'
+import { ArrowLeft, LogOut, Plus, Pencil, Trash2, Upload, X, Loader2, Building2, Users, ShieldCheck, Home, Zap, Bug, Wrench, HelpCircle, ChevronDown, Sparkles, UserCircle, MessageSquare } from 'lucide-react'
 import { HomeTab } from './HomeTab'
 import { ProfileTab } from './ProfileTab'
+import { ThreadsTab } from './ThreadsTab'
 import PhotoStudio from '@/components/PhotoStudio'
 import WelcomeHint from '@/components/WelcomeHint'
 
@@ -139,7 +140,8 @@ export default function AgentDashboardPage() {
   const { user, role, loading, signOut } = useAuth()
   const router = useRouter()
 
-  const [activeTab, setActiveTab] = useState<'home' | 'listings' | 'clients' | 'admin' | 'profile'>('home')
+  const [activeTab, setActiveTab] = useState<'home' | 'listings' | 'clients' | 'threads' | 'admin' | 'profile'>('home')
+  const [threadsListingFilter, setThreadsListingFilter] = useState<string | null>(null)
   const [listings, setListings] = useState<Listing[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [listingsScope, setListingsScope] = useState<'mine' | 'all'>('mine')
@@ -196,6 +198,7 @@ export default function AgentDashboardPage() {
     if (!user) return
     if (activeTab === 'listings') fetchListings(listingsScope)
     if (activeTab === 'clients') fetchClients(clientsScope)
+    if (activeTab === 'threads') { fetchListings('all'); fetchClients('all'); fetchAgents() }
     if (activeTab === 'admin') { fetchAgents(); fetchFeatureRequests() }
   }, [activeTab, user]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -273,6 +276,11 @@ export default function AgentDashboardPage() {
     } finally {
       setUpdatingRequestId(null)
     }
+  }
+
+  function openListingThreads(listingId: string) {
+    setThreadsListingFilter(listingId)
+    setActiveTab('threads')
   }
 
   function openNewListing() {
@@ -519,12 +527,13 @@ export default function AgentDashboardPage() {
             { key: 'home', label: 'Home', icon: Home },
             { key: 'listings', label: 'Listings', icon: Building2 },
             { key: 'clients', label: 'Clients', icon: Users },
+            { key: 'threads', label: 'Conversations', icon: MessageSquare },
             { key: 'profile', label: 'My Profile', icon: UserCircle },
             ...(isAdmin ? [{ key: 'admin', label: 'Admin', icon: ShieldCheck }] : []),
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
               key={key}
-              onClick={() => setActiveTab(key as 'home' | 'listings' | 'clients' | 'admin' | 'profile')}
+              onClick={() => setActiveTab(key as 'home' | 'listings' | 'clients' | 'threads' | 'admin' | 'profile')}
               className={`flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === key
                   ? 'border-[var(--color-navy-700)] text-[var(--color-navy-900)]'
@@ -633,7 +642,14 @@ export default function AgentDashboardPage() {
                       {listingsScope === 'all' && (
                         <p className="text-xs text-[var(--color-muted)] mb-3">Agent: {listing.agent.name}</p>
                       )}
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
+                        <button
+                          onClick={() => openListingThreads(listing.id)}
+                          className="flex items-center gap-1.5 text-xs text-[var(--color-navy-700)] border border-[var(--color-navy-200)] rounded-lg px-3 py-1.5 hover:bg-[var(--color-navy-50)] transition-colors"
+                        >
+                          <MessageSquare size={12} />
+                          Conversations
+                        </button>
                         <button
                           onClick={() => openEditListing(listing)}
                           className="flex items-center gap-1.5 text-xs text-[var(--color-navy-700)] border border-[var(--color-navy-200)] rounded-lg px-3 py-1.5 hover:bg-[var(--color-navy-50)] transition-colors"
@@ -765,6 +781,18 @@ export default function AgentDashboardPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* ── Threads tab ── */}
+        {activeTab === 'threads' && (
+          <ThreadsTab
+            getToken={() => user!.getIdToken()}
+            clients={clients.map(c => ({ id: c.id, name: c.name, email: c.email }))}
+            agents={agents.map(a => ({ id: a.id, name: a.name, email: a.email }))}
+            listings={listings.map(l => ({ id: l.id, title: l.title, location: l.location, images: l.images }))}
+            filterListingId={threadsListingFilter}
+            onClearFilter={() => setThreadsListingFilter(null)}
+          />
         )}
 
         {/* ── Admin tab ── */}
