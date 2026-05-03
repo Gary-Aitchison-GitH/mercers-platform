@@ -88,8 +88,12 @@ model Listing {
   currency     String        @default("USD")
   priceDisplay String
   size         String
-  description  String
-  images       String[]
+  description     String
+  titleSn         String?
+  titleNd         String?
+  descriptionSn   String?
+  descriptionNd   String?
+  images          String[]
   featured     Boolean       @default(false)
   status       ListingStatus @default(AVAILABLE)
   agentId      String

@@ -166,6 +166,8 @@ export default function AgentDashboardPage() {
   const [inviteResult, setInviteResult] = useState<{ link?: string; error?: string; emailSent?: boolean; emailError?: string | null } | null>(null)
   const [agentAction, setAgentAction] = useState<{ id: string; type: 'resend' | 'remove' } | null>(null)
   const [showResolvedRequests, setShowResolvedRequests] = useState(false)
+  const [backfillState, setBackfillState] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
+  const [backfillResult, setBackfillResult] = useState<{ success: number; failed: number; total: number } | null>(null)
 
   const isAdmin = ['admin', 'dev'].includes(role ?? '')
 
@@ -454,6 +456,23 @@ export default function AgentDashboardPage() {
       fetchAgents()
     } finally {
       setAgentAction(null)
+    }
+  }
+
+  async function handleBackfillTranslations() {
+    if (!user) return
+    setBackfillState('running')
+    try {
+      const token = await user.getIdToken()
+      const res = await fetch('/api/portal/listings/backfill-translations', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      setBackfillResult(data)
+      setBackfillState('done')
+    } catch {
+      setBackfillState('error')
     }
   }
 
@@ -833,6 +852,32 @@ export default function AgentDashboardPage() {
                 </div>
               )}
             </div>
+
+            {/* Dev Tools */}
+            {role === 'dev' && (
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <h3 className="text-sm font-bold text-gray-700 mb-3">Dev Tools</h3>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleBackfillTranslations}
+                    disabled={backfillState === 'running'}
+                    className="text-xs px-3 py-1.5 rounded-lg font-medium text-white disabled:opacity-50 transition-colors"
+                    style={{ background: '#1B3A6B' }}
+                  >
+                    {backfillState === 'running' ? 'Translating…' : 'Backfill listing translations'}
+                  </button>
+                  {backfillState === 'done' && backfillResult && (
+                    <span className="text-xs text-green-700">
+                      Done — {backfillResult.success}/{backfillResult.total} translated
+                      {backfillResult.failed > 0 && `, ${backfillResult.failed} failed`}
+                    </span>
+                  )}
+                  {backfillState === 'error' && (
+                    <span className="text-xs text-red-600">Translation failed — check logs</span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Feature Requests */}
             <div>

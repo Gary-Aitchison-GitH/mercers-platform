@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAdminAuth } from '@/lib/firebase-admin'
 import { getDb } from '@/lib/db'
+import { translateListing } from '@/lib/translate'
 
 async function verifyStaff(req: NextRequest) {
   const token = req.headers.get('Authorization')?.replace('Bearer ', '')
@@ -62,6 +63,8 @@ export async function POST(req: NextRequest) {
     targetAgentId = agent.id
   }
 
+  const translations = await translateListing(title, description).catch(() => null)
+
   const listing = await db.listing.create({
     data: {
       title,
@@ -74,6 +77,7 @@ export async function POST(req: NextRequest) {
       priceDisplay: priceDisplay || `${currency || 'USD'} ${price}`,
       size: size || '',
       description,
+      ...(translations ?? {}),
       images: images || [],
       agentId: targetAgentId,
     },
