@@ -21,10 +21,12 @@ export async function GET(req: NextRequest) {
   const db = await getDb()
   if (!db) return Response.json({ error: 'Database unavailable' }, { status: 503 })
 
-  const isAdmin = ['admin', 'dev'].includes(decoded.role as string)
+  const scope = new URL(req.url).searchParams.get('scope')
+  const showAll = scope === 'all'
+
   let where = {}
 
-  if (!isAdmin) {
+  if (!showAll) {
     const agent = await db.agent.findUnique({ where: { firebaseUid: decoded.uid } })
     if (!agent) return Response.json({ clients: [] })
     where = { assignedAgentId: agent.id }

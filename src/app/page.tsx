@@ -8,15 +8,48 @@ import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import ListingCard from '@/components/ListingCard'
 import AgentCard from '@/components/AgentCard'
-import IntakeWidget from '@/components/IntakeWidget'
+import ContactAgentModal from '@/components/ContactAgentModal'
 import { useLanguage } from '@/components/LanguageContext'
 import type { Listing } from '@/lib/data/listings'
-import { agents } from '@/lib/data/agents'
+import type { Agent } from '@/lib/data/agents'
+
+type DbAgent = {
+  id: string
+  name: string
+  role: string
+  email: string
+  phone: string
+  bio: string
+  specialties: string[]
+  regionalPresence: string[]
+  image: string | null
+}
+
+function normalizeAgent(a: DbAgent): Agent {
+  return {
+    id: a.id,
+    name: a.name,
+    role: a.role || 'Property Consultant',
+    roleSn: a.role || 'Property Consultant',
+    roleNd: a.role || 'Property Consultant',
+    email: a.email,
+    phone: a.phone || '',
+    bio: a.bio || '',
+    bioSn: a.bio || '',
+    bioNd: a.bio || '',
+    specialties: a.specialties || [],
+    regionalPresence: a.regionalPresence || [],
+    image: a.image || '',
+  }
+}
 
 export default function HomePage() {
   const { t } = useLanguage()
   const [search, setSearch] = useState('')
   const [featured, setFeatured] = useState<Listing[]>([])
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [rawAgents, setRawAgents] = useState<DbAgent[]>([])
+  const [contactAgent, setContactAgent] = useState<DbAgent | null>(null)
 
   useEffect(() => {
     fetch('/api/listings')
@@ -25,6 +58,13 @@ export default function HomePage() {
         const all: Listing[] = d.listings ?? []
         const feat = all.filter(l => l.featured)
         setFeatured(feat.length > 0 ? feat.slice(0, 3) : all.slice(0, 3))
+      })
+    fetch('/api/agents')
+      .then(r => r.json())
+      .then(d => {
+        const raw: DbAgent[] = d.agents ?? []
+        setRawAgents(raw)
+        setAgents(raw.map(normalizeAgent))
       })
   }, [])
 
@@ -107,31 +147,31 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Find Your Agent — AI Intake */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-4" style={{ background: '#eef4fd', color: '#1B3A6B' }}>
-                <Users size={12} />
-                {t.hero.agentMatchingLabel}
+      {/* Meet the team */}
+      {agents.length > 0 && (
+        <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between mb-10">
+              <div>
+                <h2 className="text-3xl font-bold mb-2" style={{ color: '#1B3A6B' }}>{t.agents.title}</h2>
+                <p className="text-gray-500 text-sm">{t.agents.subtitle}</p>
               </div>
-              <h2 className="text-3xl font-bold mb-4" style={{ color: '#1B3A6B' }}>
-                {t.hero.agentMatchingTitle}
-              </h2>
-              <p className="text-gray-500 leading-relaxed mb-4">
-                {t.hero.agentMatchingBody}
-              </p>
-              <p className="text-sm text-gray-400">
-                {t.hero.agentMatchingNote}
-              </p>
+              <Link
+                href="/agents"
+                className="hidden sm:flex items-center gap-2 text-sm font-semibold transition-colors hover:opacity-80"
+                style={{ color: '#C9A54C' }}
+              >
+                Meet the team <ArrowRight size={16} />
+              </Link>
             </div>
-            <div>
-              <IntakeWidget />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {agents.map((agent, i) => (
+                <AgentCard key={agent.id} agent={agent} onContact={() => setContactAgent(rawAgents[i])} />
+              ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Featured Listings */}
       <section className="py-20 px-4 sm:px-6 lg:px-8" style={{ background: '#F9F8F5' }}>
@@ -211,20 +251,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Agents preview */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8" style={{ background: '#F9F8F5' }}>
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-3" style={{ color: '#1B3A6B' }}>{t.agents.title}</h2>
-            <p className="text-gray-500">{t.agents.subtitle}</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {agents.map(agent => (
-              <AgentCard key={agent.id} agent={agent} />
-            ))}
-          </div>
-        </div>
-      </section>
+      {contactAgent && (
+        <ContactAgentModal agent={contactAgent} onClose={() => setContactAgent(null)} />
+      )}
 
       {/* CTA */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 mercers-gradient">

@@ -1,16 +1,63 @@
 'use client'
 
-import { Users, ArrowRight } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Users, ArrowRight, Loader2 } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import AgentCard from '@/components/AgentCard'
+import ContactAgentModal from '@/components/ContactAgentModal'
 import { useLanguage } from '@/components/LanguageContext'
-import { agents } from '@/lib/data/agents'
+import type { Agent } from '@/lib/data/agents'
 import Link from 'next/link'
+
+type DbAgent = {
+  id: string
+  name: string
+  role: string
+  email: string
+  phone: string
+  bio: string
+  specialties: string[]
+  regionalPresence: string[]
+  image: string | null
+}
+
+function normalizeAgent(a: DbAgent): Agent {
+  return {
+    id: a.id,
+    name: a.name,
+    role: a.role || 'Property Consultant',
+    roleSn: a.role || 'Property Consultant',
+    roleNd: a.role || 'Property Consultant',
+    email: a.email,
+    phone: a.phone || '',
+    bio: a.bio || '',
+    bioSn: a.bio || '',
+    bioNd: a.bio || '',
+    specialties: a.specialties || [],
+    regionalPresence: a.regionalPresence || [],
+    image: a.image || '',
+  }
+}
 
 export default function AgentsPage() {
   const { t } = useLanguage()
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [rawAgents, setRawAgents] = useState<DbAgent[]>([])
+  const [fetching, setFetching] = useState(true)
+  const [contactAgent, setContactAgent] = useState<DbAgent | null>(null)
+
+  useEffect(() => {
+    fetch('/api/agents')
+      .then(r => r.json())
+      .then(d => {
+        const raw: DbAgent[] = d.agents ?? []
+        setRawAgents(raw)
+        setAgents(raw.map(normalizeAgent))
+      })
+      .finally(() => setFetching(false))
+  }, [])
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -46,16 +93,38 @@ export default function AgentsPage() {
 
       <main className="flex-1 py-16 px-4 sm:px-6 lg:px-8" style={{ background: '#F9F8F5' }}>
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {agents.map(agent => (
-              <AgentCard key={agent.id} agent={agent} />
-            ))}
-          </div>
+          {fetching ? (
+            <div className="flex items-center justify-center py-24">
+              <Loader2 className="animate-spin text-gray-400" size={28} />
+            </div>
+          ) : agents.length === 0 ? (
+            <div className="text-center py-24 text-gray-400">
+              <Users size={40} className="mx-auto mb-4 opacity-30" />
+              <p>Our team profiles are coming soon.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {agents.map((agent, i) => (
+                <AgentCard
+                  key={agent.id}
+                  agent={agent}
+                  onContact={() => setContactAgent(rawAgents[i])}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </main>
 
       <Footer />
       <ChatWidget />
+
+      {contactAgent && (
+        <ContactAgentModal
+          agent={contactAgent}
+          onClose={() => setContactAgent(null)}
+        />
+      )}
     </div>
   )
 }

@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
           name,
           email,
           phone: '',
-          role: role === 'admin' ? 'Admin' : 'Agent',
+          role: '',
           bio: '',
           regionalPresence: [],
           specialties: [],

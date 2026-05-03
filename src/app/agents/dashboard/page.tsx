@@ -4,8 +4,9 @@ import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, LogOut, Plus, Pencil, Trash2, Upload, X, Loader2, Building2, Users, ShieldCheck, Home, Zap, Bug, Wrench, HelpCircle, ChevronDown } from 'lucide-react'
+import { ArrowLeft, LogOut, Plus, Pencil, Trash2, Upload, X, Loader2, Building2, Users, ShieldCheck, Home, Zap, Bug, Wrench, HelpCircle, ChevronDown, Sparkles, UserCircle } from 'lucide-react'
 import { HomeTab } from './HomeTab'
+import { ProfileTab } from './ProfileTab'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -136,9 +137,11 @@ export default function AgentDashboardPage() {
   const { user, role, loading, signOut } = useAuth()
   const router = useRouter()
 
-  const [activeTab, setActiveTab] = useState<'home' | 'listings' | 'clients' | 'admin'>('home')
+  const [activeTab, setActiveTab] = useState<'home' | 'listings' | 'clients' | 'admin' | 'profile'>('home')
   const [listings, setListings] = useState<Listing[]>([])
   const [clients, setClients] = useState<Client[]>([])
+  const [listingsScope, setListingsScope] = useState<'mine' | 'all'>('mine')
+  const [clientsScope, setClientsScope] = useState<'mine' | 'all'>('mine')
   const [agents, setAgents] = useState<AgentRecord[]>([])
   const [featureRequests, setFeatureRequests] = useState<FeatureRequest[]>([])
   const [fetching, setFetching] = useState(false)
@@ -150,9 +153,12 @@ export default function AgentDashboardPage() {
   const [form, setForm] = useState({ ...defaultForm })
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const [improvingDesc, setImprovingDesc] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const dragImageIdx = useRef<number | null>(null)
 
   // invite form
   const [invite, setInvite] = useState({ name: '', email: '', role: 'agent' })
@@ -164,7 +170,13 @@ export default function AgentDashboardPage() {
   const isAdmin = ['admin', 'dev'].includes(role ?? '')
 
   useEffect(() => {
-    if (!loading && (!user || !['agent', 'admin', 'dev'].includes(role ?? ''))) {
+    if (loading) return
+    // No user at all — definitely redirect
+    if (!user) { router.replace('/agents/login'); return }
+    // User is set but role is still null — auth context hasn't finished resolving, wait
+    if (role === null) return
+    // Role resolved but not a valid staff role — redirect
+    if (!['agent', 'admin', 'dev'].includes(role)) {
       router.replace('/agents/login')
     }
   }, [user, role, loading, router])
@@ -177,20 +189,32 @@ export default function AgentDashboardPage() {
   // Fetch tab data on mount and when tab changes
   useEffect(() => {
     if (!user) return
-    if (activeTab === 'listings') fetchListings()
-    if (activeTab === 'clients') fetchClients()
+    if (activeTab === 'listings') fetchListings(listingsScope)
+    if (activeTab === 'clients') fetchClients(clientsScope)
     if (activeTab === 'admin') { fetchAgents(); fetchFeatureRequests() }
   }, [activeTab, user]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-fetch when scope toggles
+  useEffect(() => {
+    if (!user || activeTab !== 'listings') return
+    fetchListings(listingsScope)
+  }, [listingsScope]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!user || activeTab !== 'clients') return
+    fetchClients(clientsScope)
+  }, [clientsScope]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function getToken() {
     return user!.getIdToken()
   }
 
-  async function fetchListings() {
+  async function fetchListings(scope: 'mine' | 'all' = 'mine') {
     setFetching(true)
     try {
       const token = await getToken()
-      const res = await fetch('/api/portal/listings', { headers: { Authorization: `Bearer ${token}` } })
+      const url = scope === 'all' ? '/api/portal/listings?scope=all' : '/api/portal/listings'
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       const data = await res.json()
       setListings(data.listings ?? [])
     } finally {
@@ -198,11 +222,12 @@ export default function AgentDashboardPage() {
     }
   }
 
-  async function fetchClients() {
+  async function fetchClients(scope: 'mine' | 'all' = 'mine') {
     setFetching(true)
     try {
       const token = await getToken()
-      const res = await fetch('/api/portal/clients', { headers: { Authorization: `Bearer ${token}` } })
+      const url = scope === 'all' ? '/api/portal/clients?scope=all' : '/api/portal/clients'
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       const data = await res.json()
       setClients(data.clients ?? [])
     } finally {
@@ -271,19 +296,57 @@ export default function AgentDashboardPage() {
     setShowModal(true)
   }
 
+  async function resizeImage(file: File, maxPx = 1920, quality = 0.85): Promise<File> {
+    return new Promise(resolve => {
+      const img = new Image()
+      const url = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        if (img.width <= maxPx && img.height <= maxPx) { resolve(file); return }
+        const scale = Math.min(maxPx / img.width, maxPx / img.height)
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(img.width * scale)
+        canvas.height = Math.round(img.height * scale)
+        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+        canvas.toBlob(blob => {
+          resolve(new File([blob!], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }))
+        }, 'image/jpeg', quality)
+      }
+      img.src = url
+    })
+  }
+
   async function handleUploadImages(files: FileList) {
     setUploading(true)
     const token = await getToken()
     const urls: string[] = []
     for (const file of Array.from(files)) {
+      const resized = await resizeImage(file)
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', resized)
       const res = await fetch('/api/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd })
       const data = await res.json()
       if (data.url) urls.push(data.url)
     }
     setForm(f => ({ ...f, images: [...f.images, ...urls] }))
     setUploading(false)
+  }
+
+  async function handleImproveDescription() {
+    if (!form.description.trim()) return
+    setImprovingDesc(true)
+    try {
+      const token = await getToken()
+      const res = await fetch('/api/portal/improve-description', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ description: form.description, title: form.title, type: form.type }),
+      })
+      const data = await res.json()
+      if (data.improved) setForm(f => ({ ...f, description: data.improved }))
+    } finally {
+      setImprovingDesc(false)
+    }
   }
 
   async function handleSaveListing() {
@@ -432,13 +495,14 @@ export default function AgentDashboardPage() {
         <div className="max-w-5xl mx-auto px-6 flex gap-0">
           {([
             { key: 'home', label: 'Home', icon: Home },
-            { key: 'listings', label: 'My Listings', icon: Building2 },
-            { key: 'clients', label: 'My Clients', icon: Users },
+            { key: 'listings', label: 'Listings', icon: Building2 },
+            { key: 'clients', label: 'Clients', icon: Users },
+            { key: 'profile', label: 'My Profile', icon: UserCircle },
             ...(isAdmin ? [{ key: 'admin', label: 'Admin', icon: ShieldCheck }] : []),
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
               key={key}
-              onClick={() => setActiveTab(key as 'home' | 'listings' | 'clients' | 'admin')}
+              onClick={() => setActiveTab(key as 'home' | 'listings' | 'clients' | 'admin' | 'profile')}
               className={`flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === key
                   ? 'border-[var(--color-navy-700)] text-[var(--color-navy-900)]'
@@ -462,13 +526,31 @@ export default function AgentDashboardPage() {
           />
         )}
 
+        {activeTab === 'profile' && (
+          <ProfileTab getToken={() => user!.getIdToken()} />
+        )}
+
         {/* ── Listings tab ── */}
         {activeTab === 'listings' && (
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-[var(--color-navy-900)]">
-                {isAdmin ? 'All Listings' : 'My Listings'}
-              </h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-bold text-[var(--color-navy-900)]">Listings</h2>
+                <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+                  <button
+                    onClick={() => setListingsScope('mine')}
+                    className={`px-3 py-1.5 transition-colors ${listingsScope === 'mine' ? 'bg-[var(--color-navy-800)] text-white' : 'bg-white text-[var(--color-muted)] hover:bg-gray-50'}`}
+                  >
+                    Mine
+                  </button>
+                  <button
+                    onClick={() => setListingsScope('all')}
+                    className={`px-3 py-1.5 transition-colors border-l border-gray-200 ${listingsScope === 'all' ? 'bg-[var(--color-navy-800)] text-white' : 'bg-white text-[var(--color-muted)] hover:bg-gray-50'}`}
+                  >
+                    All
+                  </button>
+                </div>
+              </div>
               <button
                 onClick={openNewListing}
                 className="flex items-center gap-2 bg-[var(--color-navy-800)] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-navy-700)] transition-colors"
@@ -514,7 +596,7 @@ export default function AgentDashboardPage() {
                         <span className="text-xs text-[var(--color-muted)]">{listing.listingType}</span>
                       </div>
                       <p className="text-sm font-bold text-[var(--color-navy-800)] mb-3">{listing.priceDisplay}</p>
-                      {isAdmin && (
+                      {listingsScope === 'all' && (
                         <p className="text-xs text-[var(--color-muted)] mb-3">Agent: {listing.agent.name}</p>
                       )}
                       <div className="flex gap-2">
@@ -544,9 +626,23 @@ export default function AgentDashboardPage() {
         {/* ── Clients tab ── */}
         {activeTab === 'clients' && (
           <div>
-            <h2 className="text-xl font-bold text-[var(--color-navy-900)] mb-6">
-              {isAdmin ? 'All Clients' : 'My Clients'}
-            </h2>
+            <div className="flex items-center gap-3 mb-6">
+              <h2 className="text-xl font-bold text-[var(--color-navy-900)]">Clients</h2>
+              <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+                <button
+                  onClick={() => setClientsScope('mine')}
+                  className={`px-3 py-1.5 transition-colors ${clientsScope === 'mine' ? 'bg-[var(--color-navy-800)] text-white' : 'bg-white text-[var(--color-muted)] hover:bg-gray-50'}`}
+                >
+                  Mine
+                </button>
+                <button
+                  onClick={() => setClientsScope('all')}
+                  className={`px-3 py-1.5 transition-colors border-l border-gray-200 ${clientsScope === 'all' ? 'bg-[var(--color-navy-800)] text-white' : 'bg-white text-[var(--color-muted)] hover:bg-gray-50'}`}
+                >
+                  All
+                </button>
+              </div>
+            </div>
 
             {fetching ? (
               <div className="flex items-center justify-center py-20">
@@ -577,27 +673,33 @@ export default function AgentDashboardPage() {
                       </div>
                     </div>
 
-                    {isAdmin && (
+                    {clientsScope === 'all' && (
                       <div className="mt-2 flex items-center gap-2">
                         <span className="text-xs text-[var(--color-muted)]">Agent:</span>
-                        <select
-                          value={client.assignedAgent?.id ?? ''}
-                          onChange={async e => {
-                            const token = await getToken()
-                            await fetch(`/api/portal/clients/${client.id}`, {
-                              method: 'PATCH',
-                              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ assignedAgentId: e.target.value || null }),
-                            })
-                            fetchClients()
-                          }}
-                          className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--color-navy-300)] bg-white text-[var(--color-navy-900)]"
-                        >
-                          <option value="">— Unassigned —</option>
-                          {agents.map(a => (
-                            <option key={a.id} value={a.id}>{a.name}</option>
-                          ))}
-                        </select>
+                        {isAdmin ? (
+                          <select
+                            value={client.assignedAgent?.id ?? ''}
+                            onChange={async e => {
+                              const token = await getToken()
+                              await fetch(`/api/portal/clients/${client.id}`, {
+                                method: 'PATCH',
+                                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ assignedAgentId: e.target.value || null }),
+                              })
+                              fetchClients(clientsScope)
+                            }}
+                            className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--color-navy-300)] bg-white text-[var(--color-navy-900)]"
+                          >
+                            <option value="">— Unassigned —</option>
+                            {agents.map(a => (
+                              <option key={a.id} value={a.id}>{a.name}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="text-xs font-medium text-[var(--color-navy-800)]">
+                            {client.assignedAgent?.name ?? '— Unassigned —'}
+                          </span>
+                        )}
                       </div>
                     )}
 
@@ -839,7 +941,11 @@ export default function AgentDashboardPage() {
 
       {/* ── Listing modal ── */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto"
+          onDragOver={e => e.preventDefault()}
+          onDrop={e => e.preventDefault()}
+        >
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-8">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <h3 className="font-bold text-[var(--color-navy-900)]">{editingId ? 'Edit Listing' : 'New Listing'}</h3>
@@ -993,7 +1099,19 @@ export default function AgentDashboardPage() {
 
               {/* Description */}
               <div>
-                <label className="block text-xs font-medium text-[var(--color-navy-700)] mb-1">Description</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-medium text-[var(--color-navy-700)]">Description</label>
+                  <button
+                    type="button"
+                    onClick={handleImproveDescription}
+                    disabled={improvingDesc || !form.description.trim()}
+                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors disabled:opacity-40"
+                    style={{ color: '#C9A54C', background: '#C9A54C18' }}
+                  >
+                    {improvingDesc ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+                    {improvingDesc ? 'Improving…' : 'Improve with AI'}
+                  </button>
+                </div>
                 <textarea
                   value={form.description}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
@@ -1005,12 +1123,46 @@ export default function AgentDashboardPage() {
 
               {/* Images */}
               <div>
-                <label className="block text-xs font-medium text-[var(--color-navy-700)] mb-2">Images</label>
-                <div className="flex flex-wrap gap-2 mb-2">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-medium text-[var(--color-navy-700)]">
+                    Images {form.images.length > 1 && <span className="text-gray-400 font-normal">(drag to reorder)</span>}
+                  </label>
+                </div>
+                <div
+                  className={`flex flex-wrap gap-2 p-2 rounded-xl border-2 border-dashed transition-colors ${dragOver ? 'border-[#1B3A6B] bg-blue-50' : 'border-gray-200'}`}
+                  onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDragOver(true) }}
+                  onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false) }}
+                  onDrop={e => {
+                    e.preventDefault(); e.stopPropagation(); setDragOver(false)
+                    if (e.dataTransfer.files.length) handleUploadImages(e.dataTransfer.files)
+                  }}
+                >
                   {form.images.map((url, i) => (
-                    <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200">
+                    <div
+                      key={url}
+                      draggable
+                      onDragStart={e => { e.stopPropagation(); dragImageIdx.current = i }}
+                      onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+                      onDrop={e => {
+                        e.preventDefault(); e.stopPropagation()
+                        const from = dragImageIdx.current
+                        if (from === null || from === i) return
+                        setForm(f => {
+                          const imgs = [...f.images]
+                          const [moved] = imgs.splice(from, 1)
+                          imgs.splice(i, 0, moved)
+                          return { ...f, images: imgs }
+                        })
+                        dragImageIdx.current = null
+                      }}
+                      onDragEnd={() => { dragImageIdx.current = null }}
+                      className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 cursor-grab active:cursor-grabbing"
+                    >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt="" className="w-full h-full object-cover" />
+                      <img src={url} alt="" className="w-full h-full object-cover pointer-events-none" />
+                      {i === 0 && (
+                        <span className="absolute bottom-0 left-0 right-0 text-center text-[10px] font-bold text-white bg-black/50 py-0.5">Cover</span>
+                      )}
                       <button
                         onClick={() => setForm(f => ({ ...f, images: f.images.filter((_, j) => j !== i) }))}
                         className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5 hover:bg-black"
@@ -1027,7 +1179,13 @@ export default function AgentDashboardPage() {
                     {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
                     <span className="text-xs mt-1">{uploading ? '…' : 'Upload'}</span>
                   </button>
+                  {dragOver && !uploading && (
+                    <div className="flex items-center justify-center text-xs text-[#1B3A6B] font-medium w-full py-1">
+                      Drop photos here
+                    </div>
+                  )}
                 </div>
+                <p className="text-xs text-gray-400 mt-1.5">Drag photos here or click Upload · First image is the cover · Drag thumbnails to reorder</p>
                 <input
                   ref={fileInputRef}
                   type="file"
