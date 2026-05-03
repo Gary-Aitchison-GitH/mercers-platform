@@ -159,6 +159,7 @@ export default function AgentDashboardPage() {
   const [inviting, setInviting] = useState(false)
   const [inviteResult, setInviteResult] = useState<{ link?: string; error?: string; emailSent?: boolean; emailError?: string | null } | null>(null)
   const [agentAction, setAgentAction] = useState<{ id: string; type: 'resend' | 'remove' } | null>(null)
+  const [showResolvedRequests, setShowResolvedRequests] = useState(false)
 
   const isAdmin = ['admin', 'dev'].includes(role ?? '')
 
@@ -747,60 +748,90 @@ export default function AgentDashboardPage() {
                 </Link>
               </div>
 
-              {featureRequests.length === 0 ? (
-                <p className="text-sm text-[var(--color-muted)]">No requests yet.</p>
-              ) : (
-                <div className="space-y-2">
-                  {featureRequests.map(req => {
-                    const typeMeta = REQUEST_TYPE[req.type] ?? REQUEST_TYPE.feature
-                    const statusMeta = REQUEST_STATUS[req.status] ?? REQUEST_STATUS.new
-                    const TypeIcon = typeMeta.icon
-                    return (
-                      <div key={req.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="shrink-0 mt-0.5">
-                            <TypeIcon size={15} style={{ color: typeMeta.color }} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-1">
-                              <p className="text-sm font-semibold text-[var(--color-navy-900)] leading-snug">{req.title}</p>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_CLASSES[req.priority] ?? 'bg-gray-100 text-gray-500'}`}>
-                                  {req.priority}
-                                </span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusMeta.classes}`}>
-                                  {statusMeta.label}
-                                </span>
-                              </div>
+              {(() => {
+                const active   = featureRequests.filter(r => !['done', 'declined'].includes(r.status))
+                const resolved = featureRequests.filter(r =>  ['done', 'declined'].includes(r.status))
+
+                const renderCard = (req: FeatureRequest) => {
+                  const typeMeta   = REQUEST_TYPE[req.type]   ?? REQUEST_TYPE.feature
+                  const statusMeta = REQUEST_STATUS[req.status] ?? REQUEST_STATUS.new
+                  const TypeIcon   = typeMeta.icon
+                  return (
+                    <div key={req.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="shrink-0 mt-0.5">
+                          <TypeIcon size={15} style={{ color: typeMeta.color }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <p className="text-sm font-semibold text-[var(--color-navy-900)] leading-snug">{req.title}</p>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_CLASSES[req.priority] ?? 'bg-gray-100 text-gray-500'}`}>
+                                {req.priority}
+                              </span>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusMeta.classes}`}>
+                                {statusMeta.label}
+                              </span>
                             </div>
-                            <p className="text-xs text-[var(--color-muted)] mb-2 leading-snug">{req.description}</p>
-                            <div className="flex items-center justify-between gap-3">
-                              <p className="text-xs text-[var(--color-muted)]">
-                                {req.agentName} · {new Date(req.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                              </p>
-                              <div className="relative">
-                                <select
-                                  value={req.status}
-                                  disabled={updatingRequestId === req.id}
-                                  onChange={e => updateRequestStatus(req.id, e.target.value)}
-                                  className="text-xs border border-gray-200 rounded-lg pl-2 pr-6 py-1 appearance-none focus:outline-none focus:ring-1 focus:ring-[var(--color-navy-300)] bg-white text-[var(--color-navy-900)] cursor-pointer disabled:opacity-50"
-                                >
-                                  <option value="new">New</option>
-                                  <option value="in-review">In Review</option>
-                                  <option value="planned">Planned</option>
-                                  <option value="done">Done</option>
-                                  <option value="declined">Declined</option>
-                                </select>
-                                <ChevronDown size={11} className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-muted)]" />
-                              </div>
+                          </div>
+                          <p className="text-xs text-[var(--color-muted)] mb-2 leading-snug">{req.description}</p>
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs text-[var(--color-muted)]">
+                              {req.agentName} · {new Date(req.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                            </p>
+                            <div className="relative">
+                              <select
+                                value={req.status}
+                                disabled={updatingRequestId === req.id}
+                                onChange={e => updateRequestStatus(req.id, e.target.value)}
+                                className="text-xs border border-gray-200 rounded-lg pl-2 pr-6 py-1 appearance-none focus:outline-none focus:ring-1 focus:ring-[var(--color-navy-300)] bg-white text-[var(--color-navy-900)] cursor-pointer disabled:opacity-50"
+                              >
+                                <option value="new">New</option>
+                                <option value="in-review">In Review</option>
+                                <option value="planned">Planned</option>
+                                <option value="done">Done</option>
+                                <option value="declined">Declined</option>
+                              </select>
+                              <ChevronDown size={11} className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-muted)]" />
                             </div>
                           </div>
                         </div>
                       </div>
-                    )
-                  })}
-                </div>
-              )}
+                    </div>
+                  )
+                }
+
+                return (
+                  <>
+                    {active.length === 0 && resolved.length === 0 && (
+                      <p className="text-sm text-[var(--color-muted)]">No requests yet.</p>
+                    )}
+                    {active.length === 0 && resolved.length > 0 && (
+                      <p className="text-sm text-[var(--color-muted)]">No active requests.</p>
+                    )}
+                    <div className="space-y-2">{active.map(renderCard)}</div>
+
+                    {resolved.length > 0 && (
+                      <div className="mt-3">
+                        <button
+                          onClick={() => setShowResolvedRequests(v => !v)}
+                          className="flex items-center gap-1.5 text-xs text-[var(--color-muted)] hover:text-[var(--color-navy-700)] transition-colors"
+                        >
+                          <ChevronDown
+                            size={13}
+                            className="transition-transform"
+                            style={{ transform: showResolvedRequests ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                          />
+                          {showResolvedRequests ? 'Hide' : 'Show'} completed &amp; declined ({resolved.length})
+                        </button>
+                        {showResolvedRequests && (
+                          <div className="space-y-2 mt-2 opacity-60">{resolved.map(renderCard)}</div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
             </div>
           </div>
         )}
