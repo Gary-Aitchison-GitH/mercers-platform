@@ -1,21 +1,38 @@
 import { NextRequest } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getOrCreate, addMessage, setGaryJoined, getAllConversations, markReadByGary } from '@/lib/store'
-import { listings } from '@/lib/data/listings'
+import { getDb } from '@/lib/db'
 import { agents } from '@/lib/data/agents'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-const systemPrompt = (locale: string) => `You are the Mercers AI property agent for Zimbabwe. Mercers is one national team — no branches, agents work collaboratively across all regions and refer clients to the best-suited colleague when needed.
+async function buildSystemPrompt(locale: string) {
+  const db = await getDb()
+  const dbListings = db ? await db.listing.findMany({
+    where: { status: 'AVAILABLE' },
+    orderBy: { createdAt: 'desc' },
+  }) : []
+
+  const listingLines = dbListings.length > 0
+    ? dbListings.map(l => `- ${l.title} | ${l.location} | ${l.priceDisplay} | ${l.size} | ${l.listingType}`).join('\n')
+    : 'No listings currently available.'
+
+  const agentLines = agents.map(a => `- ${a.name}: ${a.role} | Areas: ${a.regionalPresence.join(', ')} | Specialties: ${a.specialties.join(', ')} — ${a.email}`).join('\n')
+
+  const lang = locale === 'sn' ? 'Respond in Shona' : locale === 'nd' ? 'Respond in Ndebele' : 'Respond in English'
+
+  return `You are the Mercers AI property agent for Zimbabwe. Mercers is one national team — no branches, agents work collaboratively across all regions and refer clients to the best-suited colleague when needed.
 
 Available listings:
-${listings.map(l => `- ${l.title} | ${l.location} | ${l.priceDisplay} | ${l.size} | ${l.listingType}`).join('\n')}
+${listingLines}
 
 Our agents (nationwide team):
-${agents.map(a => `- ${a.name}: ${a.role} | Areas: ${a.regionalPresence.join(', ')} | Specialties: ${a.specialties.join(', ')} — ${a.email}`).join('\n')}
+${agentLines}
 
-Language: ${locale === 'sn' ? 'Respond in Shona' : locale === 'nd' ? 'Respond in Ndebele' : 'Respond in English'}.
-Be concise, professional, and helpful. Match clients to the right agent based on their needs and the agent specialties above. If Gary (the property manager) is on the line, stay quiet.`
+Language: ${lang}.
+Be concise, warm, and professional. Match clients to the right agent based on their needs and the agent specialties above. If Gary (the property manager) is on the line, stay quiet.
+IMPORTANT: Write in plain conversational prose only. No bullet points, no bold text, no asterisks, no markdown formatting, no emojis. Just natural sentences.`
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -70,7 +87,7 @@ export async function POST(req: NextRequest) {
     const aiResponse = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 400,
-      system: systemPrompt(locale),
+      system: await buildSystemPrompt(locale),
       messages: history,
     })
 
