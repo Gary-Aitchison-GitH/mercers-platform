@@ -8,6 +8,7 @@ import { ArrowLeft, LogOut, Plus, Pencil, Trash2, Upload, X, Loader2, Building2,
 import { HomeTab } from './HomeTab'
 import { ProfileTab } from './ProfileTab'
 import PhotoStudio from '@/components/PhotoStudio'
+import WelcomeHint from '@/components/WelcomeHint'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -548,12 +549,24 @@ export default function AgentDashboardPage() {
         )}
 
         {activeTab === 'profile' && (
-          <ProfileTab getToken={() => user!.getIdToken()} />
+          <div>
+            <WelcomeHint id="profile-v1" title="Complete your public profile">
+              <p>Your profile card appears on the public <strong>Our Agents</strong> page and the homepage — buyers see this before they contact you.</p>
+              <p>Add your <strong>photo, job title, bio, specialties and areas</strong>. Use the AI button to help write or polish your bio.</p>
+              <p>The more complete your profile, the more professional the site looks to buyers.</p>
+            </WelcomeHint>
+            <ProfileTab getToken={() => user!.getIdToken()} />
+          </div>
         )}
 
         {/* ── Listings tab ── */}
         {activeTab === 'listings' && (
           <div>
+            <WelcomeHint id="listings-v1" title="Your listings workspace">
+              <p>Use <strong>Mine / All</strong> to switch between your listings and the full team view.</p>
+              <p>Click <strong>+ New listing</strong> to add a property — AI description writing is built in.</p>
+              <p>When editing a listing, hit the gold <strong>Photo Studio</strong> button to bulk-edit photos with AI: auto-enhance, crop to 5×7, remove people & pets, and close toilet lids.</p>
+            </WelcomeHint>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <h2 className="text-xl font-bold text-[var(--color-navy-900)]">Listings</h2>
@@ -647,6 +660,11 @@ export default function AgentDashboardPage() {
         {/* ── Clients tab ── */}
         {activeTab === 'clients' && (
           <div>
+            <WelcomeHint id="clients-v1" title="Your client pipeline">
+              <p>Clients who click <strong>Register Interest</strong> on any listing appear here automatically — no manual entry needed.</p>
+              <p>Use <strong>Mine / All</strong> to view your clients or the full team pipeline.</p>
+              <p>As admin you can reassign clients to any agent using the dropdown on each card.</p>
+            </WelcomeHint>
             <div className="flex items-center gap-3 mb-6">
               <h2 className="text-xl font-bold text-[var(--color-navy-900)]">Clients</h2>
               <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
@@ -752,6 +770,11 @@ export default function AgentDashboardPage() {
         {/* ── Admin tab ── */}
         {activeTab === 'admin' && isAdmin && (
           <div className="space-y-8">
+            <WelcomeHint id="admin-v1" title="Admin controls">
+              <p><strong>Add Agent</strong> — creates an account and generates a one-hour setup link to send directly to the agent.</p>
+              <p><strong>Feature Requests</strong> — this is where agent ideas and bug reports land after they use Dev Assist. You can update the status of each request.</p>
+              <p>Tip: encourage agents to use <strong>Dev Assist</strong> whenever they spot something to improve — it reaches Gary directly.</p>
+            </WelcomeHint>
             {/* Invite form */}
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
               <h2 className="text-lg font-bold text-[var(--color-navy-900)] mb-1">Add Agent</h2>
