@@ -89,6 +89,8 @@ export function ThreadsTab({
   filterListingId,
   onClearFilter,
   onUnreadChange,
+  readIds,
+  onMarkRead,
 }: {
   getToken: () => Promise<string>
   clients: ClientOption[]
@@ -97,10 +99,11 @@ export function ThreadsTab({
   filterListingId?: string | null
   onClearFilter?: () => void
   onUnreadChange?: (count: number) => void
+  readIds: Set<string>
+  onMarkRead: (id: string) => void
 }) {
   const [threads, setThreads] = useState<Thread[]>([])
   const [selected, setSelected] = useState<Thread | null>(null)
-  const [readIds, setReadIds] = useState<Set<string>>(new Set())
   const [loadingThreads, setLoadingThreads] = useState(false)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [sending, setSending] = useState(false)
@@ -136,7 +139,7 @@ export function ThreadsTab({
   }
 
   async function openThread(thread: Thread) {
-    setReadIds(prev => new Set([...prev, thread.id]))
+    onMarkRead(thread.id)
     setLoadingDetail(true)
     setSelected({ ...thread, messages: [] })
     try {

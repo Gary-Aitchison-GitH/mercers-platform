@@ -151,6 +151,7 @@ export default function AgentDashboardPage() {
   const [fetching, setFetching] = useState(false)
   const [updatingRequestId, setUpdatingRequestId] = useState<string | null>(null)
   const [unreadThreads, setUnreadThreads] = useState(0)
+  const [readThreadIds, setReadThreadIds] = useState<Set<string>>(new Set())
 
   // listing modal
   const [showModal, setShowModal] = useState(false)
@@ -813,6 +814,8 @@ export default function AgentDashboardPage() {
             filterListingId={threadsListingFilter}
             onClearFilter={() => setThreadsListingFilter(null)}
             onUnreadChange={setUnreadThreads}
+            readIds={readThreadIds}
+            onMarkRead={id => setReadThreadIds(prev => new Set([...prev, id]))}
           />
         )}
 
