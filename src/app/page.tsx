@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Search, ArrowRight, Shield, MapPin, TrendingUp, Users } from 'lucide-react'
 import Navbar from '@/components/Navbar'
@@ -10,13 +10,23 @@ import ListingCard from '@/components/ListingCard'
 import AgentCard from '@/components/AgentCard'
 import IntakeWidget from '@/components/IntakeWidget'
 import { useLanguage } from '@/components/LanguageContext'
-import { getFeaturedListings } from '@/lib/data/listings'
+import type { Listing } from '@/lib/data/listings'
 import { agents } from '@/lib/data/agents'
 
 export default function HomePage() {
   const { t } = useLanguage()
   const [search, setSearch] = useState('')
-  const featured = getFeaturedListings()
+  const [featured, setFeatured] = useState<Listing[]>([])
+
+  useEffect(() => {
+    fetch('/api/listings')
+      .then(r => r.json())
+      .then(d => {
+        const all: Listing[] = d.listings ?? []
+        const feat = all.filter(l => l.featured)
+        setFeatured(feat.length > 0 ? feat.slice(0, 3) : all.slice(0, 3))
+      })
+  }, [])
 
   const stats = [
     { label: t.stats.activeListings, value: '9+', icon: MapPin },

@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
-import { Search, SlidersHorizontal } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Search, SlidersHorizontal, Loader2 } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import ListingCard from '@/components/ListingCard'
 import { useLanguage } from '@/components/LanguageContext'
-import { listings, PropertyType, ListingType } from '@/lib/data/listings'
+import type { Listing, PropertyType, ListingType } from '@/lib/data/listings'
 
 type Filter = PropertyType | 'all'
 
@@ -16,6 +16,15 @@ export default function ListingsPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [listingType, setListingType] = useState<ListingType | 'all'>('all')
+  const [listings, setListings] = useState<Listing[]>([])
+  const [fetching, setFetching] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/listings')
+      .then(r => r.json())
+      .then(d => setListings(d.listings ?? []))
+      .finally(() => setFetching(false))
+  }, [])
 
   const filterOptions: { key: Filter; label: string }[] = [
     { key: 'all', label: t.listings.filters.all },
@@ -107,6 +116,12 @@ export default function ListingsPage() {
       {/* Grid */}
       <main className="flex-1 py-12 px-4 sm:px-6 lg:px-8" style={{ background: '#F9F8F5' }}>
         <div className="max-w-7xl mx-auto">
+          {fetching ? (
+            <div className="flex items-center justify-center py-24">
+              <Loader2 className="animate-spin text-gray-400" size={28} />
+            </div>
+          ) : (
+          <>
           <p className="text-sm text-gray-500 mb-6">{filtered.length} {filtered.length === 1 ? t.listings.foundSingular : t.listings.found}</p>
           {filtered.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -121,6 +136,8 @@ export default function ListingsPage() {
                 {t.listings.clearFilters}
               </button>
             </div>
+          )}
+          </>
           )}
         </div>
       </main>

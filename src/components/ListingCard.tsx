@@ -29,11 +29,16 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
   return (
     <div className="card-hover bg-white rounded-2xl overflow-hidden shadow-md border border-gray-100 flex flex-col">
-      {/* Image placeholder */}
-      <div className="relative h-52 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${typeBg[listing.type]}22 0%, ${typeBg[listing.type]}44 100%)` }}>
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: typeBg[listing.type] }}>
-          <Icon size={28} color="white" />
-        </div>
+      {/* Image */}
+      <div className="relative h-52 flex items-center justify-center overflow-hidden" style={{ background: `linear-gradient(135deg, ${typeBg[listing.type]}22 0%, ${typeBg[listing.type]}44 100%)` }}>
+        {listing.images[0] ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={listing.images[0]} alt={listing.title} className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: typeBg[listing.type] }}>
+            <Icon size={28} color="white" />
+          </div>
+        )}
         <div className="absolute top-3 left-3 flex gap-2">
           <span className="text-xs font-bold px-2.5 py-1 rounded-full text-white" style={{ background: typeBg[listing.type] }}>
             {filterLabel}
