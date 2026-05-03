@@ -188,7 +188,7 @@ export default function ListingDetailPage() {
 
             {/* Description */}
             <div className="bg-white rounded-xl p-6 border border-gray-100">
-              <h2 className="text-base font-bold text-gray-900 mb-3">About this property</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-3">{t.listingDetail.aboutProperty}</h2>
               <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{description}</p>
             </div>
           </div>
@@ -197,7 +197,7 @@ export default function ListingDetailPage() {
           <div className="space-y-4">
             <div className="bg-white rounded-xl p-6 border border-gray-100 sticky top-20">
               <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide">
-                {listing.listingType === 'sale' ? 'Asking price' : 'Rental price'}
+                {listing.listingType === 'sale' ? t.listingDetail.askingPrice : t.listingDetail.rentalPrice}
               </p>
               <p className="text-3xl font-bold mb-4" style={{ color: '#1B3A6B' }}>{listing.priceDisplay}</p>
 
@@ -207,16 +207,16 @@ export default function ListingDetailPage() {
                 style={{ background: '#1B3A6B' }}
               >
                 <Heart size={15} />
-                Register Interest
+                {t.listingDetail.registerInterest}
               </button>
 
               <p className="text-xs text-gray-400 text-center mt-3">
-                Or use the chat below to ask our AI assistant
+                {t.listingDetail.chatPrompt}
               </p>
             </div>
 
             <div className="bg-white rounded-xl p-4 border border-gray-100">
-              <p className="text-xs text-gray-500 mb-1 font-medium">Listed by</p>
+              <p className="text-xs text-gray-500 mb-1 font-medium">{t.listingDetail.listedBy}</p>
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: accentColor }}>
                   {(listing.agent || 'M').charAt(0).toUpperCase()}

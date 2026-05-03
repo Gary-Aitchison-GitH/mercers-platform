@@ -116,6 +116,14 @@ export const translations = {
       rights: '© 2026 Mercers. All rights reserved.',
       council: 'Registered Estate Agents Council Member',
     },
+    listingDetail: {
+      aboutProperty: 'About this property',
+      askingPrice: 'Asking price',
+      rentalPrice: 'Rental price',
+      registerInterest: 'Register Interest',
+      chatPrompt: 'Or use the chat below to ask our AI assistant',
+      listedBy: 'Listed by',
+    },
     seo: {
       homeTitle: 'Mercers | Property Agents in Zimbabwe — Nationwide Coverage',
       homeDesc: 'Mercers — Zimbabwe\'s nationwide property team. Commercial, industrial, agricultural and residential properties for sale and rent across Zimbabwe. One team, local expertise everywhere.',
@@ -236,6 +244,14 @@ export const translations = {
       rights: '© 2026 Mercers. Kodzero dzose dzakachengeterwa.',
       council: 'Nhengo Yakanyoreswa yeEstate Agents Council',
     },
+    listingDetail: {
+      aboutProperty: 'Nezveimba iyi',
+      askingPrice: 'Mutengo unokumbirwa',
+      rentalPrice: 'Mutengo weganha',
+      registerInterest: 'Nyora Kufarira',
+      chatPrompt: 'Kana shandisa nhaurirano pazasi kubvunza mumiririri wedu',
+      listedBy: 'Yakanyoreswa na',
+    },
     seo: {
       homeTitle: 'Mercers | Vagadzirisani veMisha muZimbabwe',
       homeDesc: 'Mercers — timu yenyika yose yezvepfuma muZimbabwe. Misha yebiznisi, indasitiri, zvirimo uye yokugara muZimbabwe yose.',
@@ -355,6 +371,14 @@ export const translations = {
       follow: 'Silandele',
       rights: '© 2026 Mercers. Amalungelo onke agciniwe.',
       council: 'Ilungu Elibhalisiwe leEstate Agents Council',
+    },
+    listingDetail: {
+      aboutProperty: 'Mayelana Lale Ndawo',
+      askingPrice: 'Intengo Ecelwayo',
+      rentalPrice: 'Intengo Yokuqasha',
+      registerInterest: 'Bhalisa Intshisekelo',
+      chatPrompt: 'Noma sebenzisa ingxoxo engezansi ukubuza umsebenzi wethu we-AI',
+      listedBy: 'Ibhalisiwe ngu',
     },
     seo: {
       homeTitle: 'Mercers | Abasebenzi Bezindawo eZimbabwe — Izwe Lonke',
