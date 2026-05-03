@@ -29,10 +29,13 @@ export async function POST(req: NextRequest) {
       const send = (data: object) =>
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
 
+      console.log(`[photo-studio] processing ${publicIds.length} photos, ops:`, operations)
+
       // Process all photos in parallel — each streams its result when done
       await Promise.allSettled(
         publicIds.map(async (publicId) => {
           try {
+            console.log(`[photo-studio] starting: ${publicId}`)
             const result = await cloudinary.uploader.explicit(publicId, {
               type: 'upload',
               eager: transformations,
@@ -41,16 +44,21 @@ export async function POST(req: NextRequest) {
 
             const processedUrl = result.eager?.[0]?.secure_url
             if (processedUrl) {
+              console.log(`[photo-studio] done: ${publicId}`)
               send({ publicId, url: processedUrl, status: 'done' })
             } else {
+              console.error(`[photo-studio] no output URL for: ${publicId}`, result)
               send({ publicId, status: 'error', message: 'No output URL returned' })
             }
           } catch (err) {
             const message = err instanceof Error ? err.message : 'Processing failed'
+            console.error(`[photo-studio] error for ${publicId}:`, err)
             send({ publicId, status: 'error', message })
           }
         })
       )
+
+      console.log(`[photo-studio] batch complete`)
 
       send({ done: true })
       controller.close()

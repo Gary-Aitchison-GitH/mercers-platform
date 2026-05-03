@@ -25,10 +25,14 @@ export async function POST(req: NextRequest) {
   const result = await new Promise<{ public_id: string; secure_url: string }>((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       { folder: 'mercers/listings', resource_type: 'image' },
-      (err, res) => err ? reject(err) : resolve(res as { public_id: string; secure_url: string })
+      (err, res) => {
+        if (err) { console.error('[photo-studio] upload error:', err); reject(err) }
+        else resolve(res as { public_id: string; secure_url: string })
+      }
     )
     stream.end(buffer)
   })
 
+  console.log(`[photo-studio] uploaded: ${result.public_id}`)
   return Response.json({ publicId: result.public_id, url: result.secure_url })
 }
