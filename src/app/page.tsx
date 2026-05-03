@@ -50,12 +50,14 @@ export default function HomePage() {
   const [agents, setAgents] = useState<Agent[]>([])
   const [rawAgents, setRawAgents] = useState<DbAgent[]>([])
   const [contactAgent, setContactAgent] = useState<DbAgent | null>(null)
+  const [totalListings, setTotalListings] = useState<number | null>(null)
 
   useEffect(() => {
     fetch('/api/listings')
       .then(r => r.json())
       .then(d => {
         const all: Listing[] = d.listings ?? []
+        setTotalListings(all.length)
         const feat = all.filter(l => l.featured)
         setFeatured(feat.length > 0 ? feat.slice(0, 3) : all.slice(0, 3))
       })
@@ -69,9 +71,9 @@ export default function HomePage() {
   }, [])
 
   const stats = [
-    { label: t.stats.activeListings, value: '9+', icon: MapPin },
+    { label: t.stats.activeListings, value: totalListings !== null ? String(totalListings) : '…', icon: MapPin },
     { label: t.stats.yearsExperience, value: '20+', icon: TrendingUp },
-    { label: t.stats.agentsNationwide, value: '4', icon: Users },
+    { label: t.stats.agentsNationwide, value: agents.length > 0 ? String(agents.length) : '…', icon: Users },
     { label: t.stats.councilMember, value: 'EACZ', icon: Shield },
   ]
 

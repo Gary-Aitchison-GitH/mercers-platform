@@ -150,6 +150,7 @@ export default function AgentDashboardPage() {
   const [featureRequests, setFeatureRequests] = useState<FeatureRequest[]>([])
   const [fetching, setFetching] = useState(false)
   const [updatingRequestId, setUpdatingRequestId] = useState<string | null>(null)
+  const [unreadThreads, setUnreadThreads] = useState(0)
 
   // listing modal
   const [showModal, setShowModal] = useState(false)
@@ -192,6 +193,20 @@ export default function AgentDashboardPage() {
   useEffect(() => {
     if (user && isAdmin) fetchAgents()
   }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Unread thread count — fetch once on mount for the initial tab badge.
+  // While the threads tab is open, ThreadsTab drives the count via onUnreadChange.
+  // The navbar has its own polling independently.
+  useEffect(() => {
+    if (!user) return
+    user.getIdToken().then(token =>
+      fetch('/api/portal/threads/unread-count', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(d => { if (typeof d.count === 'number') setUnreadThreads(d.count) })
+        .catch(() => {})
+    )
+  }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // Fetch tab data on mount and when tab changes
   useEffect(() => {
@@ -534,7 +549,7 @@ export default function AgentDashboardPage() {
             <button
               key={key}
               onClick={() => setActiveTab(key as 'home' | 'listings' | 'clients' | 'threads' | 'admin' | 'profile')}
-              className={`flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 transition-colors ${
+              className={`relative flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === key
                   ? 'border-[var(--color-navy-700)] text-[var(--color-navy-900)]'
                   : 'border-transparent text-[var(--color-muted)] hover:text-[var(--color-navy-900)]'
@@ -542,6 +557,11 @@ export default function AgentDashboardPage() {
             >
               <Icon size={15} />
               {label}
+              {key === 'threads' && unreadThreads > 0 && (
+                <span className="ml-1 min-w-[22px] h-[22px] rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center px-1.5 shadow-sm">
+                  {unreadThreads > 99 ? '99+' : unreadThreads}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -792,6 +812,7 @@ export default function AgentDashboardPage() {
             listings={listings.map(l => ({ id: l.id, title: l.title, location: l.location, images: l.images }))}
             filterListingId={threadsListingFilter}
             onClearFilter={() => setThreadsListingFilter(null)}
+            onUnreadChange={setUnreadThreads}
           />
         )}
 

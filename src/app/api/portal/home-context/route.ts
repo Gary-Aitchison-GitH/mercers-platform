@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     db.listing.count({ where: { ...listingFilter, status: 'AVAILABLE' } }),
     db.client.count({ where: clientFilter }),
     db.client.count({ where: { ...clientFilter, journeyStage: 'viewing' } }),
-    db.conversation.count({ where: { createdAt: { gte: sevenDaysAgo } } }),
+    db.threadMessage.count({ where: { senderType: 'CLIENT', createdAt: { gte: sevenDaysAgo } } }),
     isAdmin ? db.featureRequest.count({ where: { status: 'new' } }) : Promise.resolve(0),
   ])
 

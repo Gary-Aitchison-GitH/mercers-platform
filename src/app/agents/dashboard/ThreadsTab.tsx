@@ -88,6 +88,7 @@ export function ThreadsTab({
   listings,
   filterListingId,
   onClearFilter,
+  onUnreadChange,
 }: {
   getToken: () => Promise<string>
   clients: ClientOption[]
@@ -95,9 +96,11 @@ export function ThreadsTab({
   listings: ListingOption[]
   filterListingId?: string | null
   onClearFilter?: () => void
+  onUnreadChange?: (count: number) => void
 }) {
   const [threads, setThreads] = useState<Thread[]>([])
   const [selected, setSelected] = useState<Thread | null>(null)
+  const [readIds, setReadIds] = useState<Set<string>>(new Set())
   const [loadingThreads, setLoadingThreads] = useState(false)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [sending, setSending] = useState(false)
@@ -115,6 +118,11 @@ export function ThreadsTab({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [selected?.messages])
 
+  useEffect(() => {
+    const count = threads.filter(t => !readIds.has(t.id) && t.messages[0]?.senderType === 'CLIENT').length
+    onUnreadChange?.(count)
+  }, [threads, readIds]) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function fetchThreads() {
     setLoadingThreads(true)
     try {
@@ -128,6 +136,7 @@ export function ThreadsTab({
   }
 
   async function openThread(thread: Thread) {
+    setReadIds(prev => new Set([...prev, thread.id]))
     setLoadingDetail(true)
     setSelected({ ...thread, messages: [] })
     try {
@@ -287,6 +296,7 @@ export function ThreadsTab({
                       key={t.id}
                       thread={t}
                       active={selected?.id === t.id}
+                      unread={!readIds.has(t.id) && t.messages[0]?.senderType === 'CLIENT'}
                       onClick={() => openThread(t)}
                     />
                   ))}
@@ -302,6 +312,7 @@ export function ThreadsTab({
                       key={t.id}
                       thread={t}
                       active={selected?.id === t.id}
+                      unread={!readIds.has(t.id) && t.messages[0]?.senderType === 'CLIENT'}
                       onClick={() => openThread(t)}
                     />
                   ))}
@@ -484,7 +495,7 @@ export function ThreadsTab({
 
 // ─── Thread list item ─────────────────────────────────────────────────────────
 
-function ThreadListItem({ thread, active, onClick }: { thread: Thread; active: boolean; onClick: () => void }) {
+function ThreadListItem({ thread, active, unread, onClick }: { thread: Thread; active: boolean; unread: boolean; onClick: () => void }) {
   const lastMsg = thread.messages[0]
   const clientNames = thread.participants
     .filter(p => p.participantType === 'CLIENT')
@@ -497,16 +508,20 @@ function ThreadListItem({ thread, active, onClick }: { thread: Thread; active: b
       className={`w-full text-left px-4 py-3 flex items-start gap-3 transition-colors border-l-2 ${
         active
           ? 'bg-[var(--color-navy-50)] border-l-[var(--color-navy-700)]'
+          : unread
+          ? 'bg-red-50 border-l-red-500 hover:bg-red-50'
           : 'border-l-transparent hover:bg-gray-50'
       }`}
     >
-      <div className="w-8 h-8 rounded-lg bg-[var(--color-navy-50)] flex items-center justify-center shrink-0 mt-0.5">
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${unread ? 'bg-red-100' : 'bg-[var(--color-navy-50)]'}`}>
         {thread.type === 'LISTING'
-          ? <Building2 size={14} className="text-[var(--color-navy-400)]" />
-          : <FileText size={14} className="text-[var(--color-navy-400)]" />}
+          ? <Building2 size={14} className={unread ? 'text-red-500' : 'text-[var(--color-navy-400)]'} />
+          : <FileText size={14} className={unread ? 'text-red-500' : 'text-[var(--color-navy-400)]'} />}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-[var(--color-navy-900)] truncate">{threadLabel(thread)}</p>
+        <p className={`text-xs truncate ${unread ? 'font-bold text-[var(--color-navy-900)]' : 'font-semibold text-[var(--color-navy-900)]'}`}>
+          {threadLabel(thread)}
+        </p>
         {clientNames && (
           <p className="text-[11px] text-[var(--color-muted)] flex items-center gap-1">
             <Users size={10} />
@@ -514,10 +529,14 @@ function ThreadListItem({ thread, active, onClick }: { thread: Thread; active: b
           </p>
         )}
         {lastMsg && (
-          <p className="text-[11px] text-[var(--color-muted)] truncate mt-0.5">{lastMsg.content}</p>
+          <p className={`text-[11px] truncate mt-0.5 ${unread ? 'text-red-600 font-medium' : 'text-[var(--color-muted)]'}`}>
+            {lastMsg.content}
+          </p>
         )}
       </div>
-      <ChevronRight size={13} className="text-gray-300 shrink-0 mt-1" />
+      {unread
+        ? <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0 mt-2" />
+        : <ChevronRight size={13} className="text-gray-300 shrink-0 mt-1" />}
     </button>
   )
 }

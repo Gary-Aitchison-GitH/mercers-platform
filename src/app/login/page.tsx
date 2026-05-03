@@ -30,7 +30,7 @@ export default function LoginPage() {
         document.cookie = `fb-token=${idToken}; path=/; max-age=3600; SameSite=Strict`
         router.push('/agents/dashboard')
       } else {
-        router.push('/')
+        router.push('/portal/client')
       }
     } catch (err: unknown) {
       const code = (err as { code?: string }).code

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Menu, X, Mountain, LogOut, LayoutDashboard } from 'lucide-react'
+import { Menu, X, Mountain, LogOut, LayoutDashboard, MessageSquare } from 'lucide-react'
 import { useLanguage } from './LanguageContext'
 import { useAuth } from '@/lib/auth-context'
 import { Locale } from '@/lib/translations'
@@ -17,8 +17,24 @@ export default function Navbar() {
   const [open, setOpen] = useState(false)
   const { t, locale, setLocale } = useLanguage()
   const { user, role, signOut } = useAuth()
+  const [unread, setUnread] = useState(0)
 
   const isStaff = ['agent', 'admin', 'dev'].includes(role ?? '')
+
+  useEffect(() => {
+    if (!user || !isStaff) return
+    function fetchUnread() {
+      user!.getIdToken().then(token =>
+        fetch('/api/portal/threads/unread-count', { headers: { Authorization: `Bearer ${token}` } })
+          .then(r => r.json())
+          .then(d => { if (typeof d.count === 'number') setUnread(d.count) })
+          .catch(() => {})
+      )
+    }
+    fetchUnread()
+    const interval = setInterval(fetchUnread, 30000)
+    return () => clearInterval(interval)
+  }, [user, isStaff]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const navLinks = [
     { href: '/', label: t.nav.home },
@@ -97,13 +113,26 @@ export default function Navbar() {
             {/* Auth — logged in: desktop controls */}
             {user && (
               <div className="hidden md:flex items-center gap-2">
-                {isStaff && (
+                {isStaff ? (
                   <Link
                     href="/agents/dashboard"
-                    className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-[#1B3A6B] transition-colors"
+                    className="relative flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-[#1B3A6B] transition-colors"
                   >
                     <LayoutDashboard size={15} />
                     Portal
+                    {unread > 0 && (
+                      <span className="absolute -top-2.5 -right-4 min-w-[22px] h-[22px] rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center px-1.5 shadow-sm">
+                        {unread > 99 ? '99+' : unread}
+                      </span>
+                    )}
+                  </Link>
+                ) : (
+                  <Link
+                    href="/portal/client"
+                    className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-[#1B3A6B] transition-colors"
+                  >
+                    <MessageSquare size={15} />
+                    My Portal
                   </Link>
                 )}
                 <button
@@ -144,14 +173,28 @@ export default function Navbar() {
             <div className="pt-3 mt-2 border-t border-gray-100 space-y-1">
               {user ? (
                 <>
-                  {isStaff && (
+                  {isStaff ? (
                     <Link
                       href="/agents/dashboard"
                       onClick={() => setOpen(false)}
-                      className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+                      className="relative flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
                     >
                       <LayoutDashboard size={15} />
                       Agent Portal
+                      {unread > 0 && (
+                        <span className="ml-auto min-w-[22px] h-[22px] rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center px-1.5 shadow-sm">
+                          {unread > 99 ? '99+' : unread}
+                        </span>
+                      )}
+                    </Link>
+                  ) : (
+                    <Link
+                      href="/portal/client"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+                    >
+                      <MessageSquare size={15} />
+                      My Portal
                     </Link>
                   )}
                   <button

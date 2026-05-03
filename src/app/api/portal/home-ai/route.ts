@@ -103,7 +103,7 @@ ${convosSummary}
     ])
     agentName = 'Admin'
 
-    const allAgents = await db.agent.findMany({ select: { name: true }, where: { isActive: true } })
+    const allAgents = await db.agent.findMany({ select: { name: true }, where: { isActive: true, role: { notIn: ['dev', 'admin'] } } })
 
     const clientsSummary = allClients.length
       ? allClients.map(c => `  • ${c.name} | ${c.clientType} | Stage: ${c.journeyStage} | Agent: ${c.assignedAgent?.name ?? 'UNASSIGNED'}${c.email ? ` | ${c.email}` : ''}`).join('\n')

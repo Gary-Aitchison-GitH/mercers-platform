@@ -46,15 +46,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setLoading(false)
       } else {
-        // Firebase emits null on initial load before restoring session from IndexedDB,
-        // and again during token refresh. Keep loading=true so route guards don't fire.
-        // The generation counter discards this branch if the real user callback arrives first.
-        // Grace period: 5s hard wait + localStorage "last known role" as a secondary guard.
+        // Firebase emits null on initial load before restoring session from IndexedDB.
+        // Poll every 250ms so we exit as soon as the real user arrives, up to a max wait.
+        // Max is 10s for returning users (localStorage key present), 3s for fresh sessions.
         setLoading(true)
         const lastRole = typeof window !== 'undefined' ? localStorage.getItem(ROLE_KEY) : null
-        const grace = lastRole ? 5000 : 2000
-        await new Promise(resolve => setTimeout(resolve, grace))
-        if (thisGen !== gen) return
+        const maxWait = lastRole ? 10000 : 3000
+        const started = Date.now()
+        while (Date.now() - started < maxWait) {
+          await new Promise(resolve => setTimeout(resolve, 250))
+          if (thisGen !== gen) return
+        }
         localStorage.removeItem(ROLE_KEY)
         setUser(null)
         setRole(null)

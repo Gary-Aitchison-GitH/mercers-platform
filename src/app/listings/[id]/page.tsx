@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { MapPin, Home, Building2, Warehouse, Leaf, ArrowLeft, User, Tag, Ruler, Heart, Loader2, AlertCircle } from 'lucide-react'
+import { MapPin, Home, Building2, Warehouse, Leaf, ArrowLeft, User, Tag, Ruler, Heart, Loader2, AlertCircle, ChevronLeft, ChevronRight, X, Expand } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
@@ -33,7 +33,22 @@ export default function ListingDetailPage() {
   const [fetching, setFetching] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [activeImage, setActiveImage] = useState(0)
+  const [lightbox, setLightbox] = useState(false)
   const [showInterest, setShowInterest] = useState(false)
+
+  const prevImage = useCallback((images: string[]) => setActiveImage(i => (i - 1 + images.length) % images.length), [])
+  const nextImage = useCallback((images: string[]) => setActiveImage(i => (i + 1) % images.length), [])
+
+  useEffect(() => {
+    if (!listing || listing.images.length <= 1) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'ArrowLeft') prevImage(listing!.images)
+      if (e.key === 'ArrowRight') nextImage(listing!.images)
+      if (e.key === 'Escape') setLightbox(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [listing, prevImage, nextImage])
 
   useEffect(() => {
     fetch(`/api/listings/${id}`)
@@ -92,7 +107,8 @@ export default function ListingDetailPage() {
               <img
                 src={listing.images[activeImage]}
                 alt={listing.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover cursor-zoom-in"
+                onClick={() => setLightbox(true)}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${accentColor}22, ${accentColor}55)` }}>
@@ -129,6 +145,42 @@ export default function ListingDetailPage() {
               <ArrowLeft size={14} />
               Back
             </button>
+
+            {/* Prev / Next arrows */}
+            {listing.images.length > 1 && (
+              <>
+                <button
+                  onClick={() => prevImage(listing.images)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center text-white transition-colors"
+                  aria-label="Previous photo"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <button
+                  onClick={() => nextImage(listing.images)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center text-white transition-colors"
+                  aria-label="Next photo"
+                >
+                  <ChevronRight size={20} />
+                </button>
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
+                  {listing.images.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveImage(i)}
+                      className={`rounded-full transition-all ${i === activeImage ? 'w-5 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/50'}`}
+                    />
+                  ))}
+                </div>
+                <button
+                  onClick={() => setLightbox(true)}
+                  className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center text-white transition-colors"
+                  aria-label="View fullscreen"
+                >
+                  <Expand size={14} />
+                </button>
+              </>
+            )}
           </div>
 
           {/* Thumbnail strip */}
@@ -247,6 +299,49 @@ export default function ListingDetailPage() {
           listing={listing}
           onClose={() => setShowInterest(false)}
         />
+      )}
+
+      {/* Lightbox */}
+      {lightbox && listing && listing.images.length > 0 && (
+        <div
+          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
+          onClick={() => setLightbox(false)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={listing.images[activeImage]}
+            alt={listing.title}
+            className="max-h-[90vh] max-w-[90vw] object-contain select-none"
+            onClick={e => e.stopPropagation()}
+          />
+
+          <button
+            onClick={() => setLightbox(false)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+          >
+            <X size={20} />
+          </button>
+
+          {listing.images.length > 1 && (
+            <>
+              <button
+                onClick={e => { e.stopPropagation(); prevImage(listing.images) }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); nextImage(listing.images) }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+              >
+                <ChevronRight size={24} />
+              </button>
+              <p className="absolute bottom-5 left-1/2 -translate-x-1/2 text-white/60 text-sm">
+                {activeImage + 1} / {listing.images.length}
+              </p>
+            </>
+          )}
+        </div>
       )}
     </div>
   )
