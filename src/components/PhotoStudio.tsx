@@ -33,7 +33,8 @@ interface Props {
 export default function PhotoStudio({ onComplete, onClose }: Props) {
   const { user } = useAuth()
   const [photos, setPhotos] = useState<Photo[]>([])
-  const [ops, setOps] = useState<Ops>({ enhance: true, crop: true, removePeople: true, fixToilets: true })
+  // removePeople and fixToilets require Cloudinary Generative Remove add-on — off by default until enabled
+  const [ops, setOps] = useState<Ops>({ enhance: true, crop: true, removePeople: false, fixToilets: false })
   const [processing, setProcessing] = useState(false)
   const [preview, setPreview] = useState<Photo | null>(null)
   const [sliderPos, setSliderPos] = useState(50)
@@ -112,6 +113,12 @@ export default function PhotoStudio({ onComplete, onClose }: Props) {
         body: JSON.stringify({ publicIds: selectedPhotos.map(p => p.publicId), operations: ops }),
       })
 
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Server error' }))
+        selectedPhotos.forEach(p => updatePhoto(p.id, { status: 'error', errorMsg: err.error || 'Server error' }))
+        return
+      }
+
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
@@ -172,10 +179,10 @@ export default function PhotoStudio({ onComplete, onClose }: Props) {
   }
 
   const opsConfig = [
-    { key: 'enhance' as const, icon: Sparkles, label: 'Auto-enhance', desc: 'Brightness, contrast, indoor lighting' },
-    { key: 'crop' as const, icon: Crop, label: 'Crop to 5×7 landscape', desc: 'Smart crop preserves the room' },
-    { key: 'removePeople' as const, icon: Users, label: 'Remove people & pets', desc: 'AI erases people, cats, dogs' },
-    { key: 'fixToilets' as const, icon: Toilet, label: 'Close toilet lids', desc: 'AI closes open toilet seats' },
+    { key: 'enhance' as const, icon: Sparkles, label: 'Auto-enhance', desc: 'Brightness, contrast, indoor lighting', addon: false },
+    { key: 'crop' as const, icon: Crop, label: 'Crop to 5×7 landscape', desc: 'Smart crop preserves the room', addon: false },
+    { key: 'removePeople' as const, icon: Users, label: 'Remove people & pets', desc: 'AI erases people, cats, dogs', addon: true },
+    { key: 'fixToilets' as const, icon: Toilet, label: 'Close toilet lids', desc: 'AI closes open toilet seats', addon: true },
   ]
 
   return (
@@ -319,7 +326,7 @@ export default function PhotoStudio({ onComplete, onClose }: Props) {
             <div>
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">AI Operations</p>
               <div className="space-y-2">
-                {opsConfig.map(({ key, icon: Icon, label, desc }) => (
+                {opsConfig.map(({ key, icon: Icon, label, desc, addon }) => (
                   <button
                     key={key}
                     onClick={() => setOps(o => ({ ...o, [key]: !o[key] }))}
@@ -335,7 +342,10 @@ export default function PhotoStudio({ onComplete, onClose }: Props) {
                       <Icon size={14} color={ops[key] ? 'white' : '#9ca3af'} />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-gray-800 leading-tight">{label}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-semibold text-gray-800 leading-tight">{label}</p>
+                        {addon && <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-amber-100 text-amber-700 leading-none">Add-on</span>}
+                      </div>
                       <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{desc}</p>
                     </div>
                   </button>

@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
             console.log(`[photo-studio] starting: ${publicId}`)
             const result = await cloudinary.uploader.explicit(publicId, {
               type: 'upload',
-              eager: transformations,
+              eager: [transformations],  // wrap in array to chain all ops into one pipeline
               eager_async: false,
             }) as { eager?: { secure_url: string }[] }
 

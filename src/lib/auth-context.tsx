@@ -40,15 +40,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null)
           setRole(null)
         }
+        setLoading(false)
       } else {
-        // Grace period: Firebase briefly emits null during token refresh cycles.
-        // Wait 1.5s — if a new callback fires (re-auth succeeds), this is discarded.
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        // Firebase emits null on initial load before reading from IndexedDB, and
+        // during token refresh. Re-enable the loading guard immediately so the
+        // dashboard guard (which redirects on loading=false + user=null) doesn't
+        // fire prematurely. Wait 3s — if the real user callback arrives first,
+        // the generation counter discards this branch entirely.
+        setLoading(true)
+        await new Promise(resolve => setTimeout(resolve, 3000))
         if (thisGen !== gen) return
         setUser(null)
         setRole(null)
+        setLoading(false)
       }
-      setLoading(false)
     })
     return unsub
   }, [])
