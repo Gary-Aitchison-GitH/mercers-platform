@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { ArrowLeft, LogOut, Plus, Pencil, Trash2, Upload, X, Loader2, Building2, Users, ShieldCheck, Home, Zap, Bug, Wrench, HelpCircle, ChevronDown, Sparkles, UserCircle } from 'lucide-react'
 import { HomeTab } from './HomeTab'
 import { ProfileTab } from './ProfileTab'
+import PhotoStudio from '@/components/PhotoStudio'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -166,6 +167,7 @@ export default function AgentDashboardPage() {
   const [inviteResult, setInviteResult] = useState<{ link?: string; error?: string; emailSent?: boolean; emailError?: string | null } | null>(null)
   const [agentAction, setAgentAction] = useState<{ id: string; type: 'resend' | 'remove' } | null>(null)
   const [showResolvedRequests, setShowResolvedRequests] = useState(false)
+  const [showPhotoStudio, setShowPhotoStudio] = useState(false)
   const [backfillState, setBackfillState] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
   const [backfillResult, setBackfillResult] = useState<{ success: number; failed: number; total: number } | null>(null)
 
@@ -1172,6 +1174,15 @@ export default function AgentDashboardPage() {
                   <label className="block text-xs font-medium text-[var(--color-navy-700)]">
                     Images {form.images.length > 1 && <span className="text-gray-400 font-normal">(drag to reorder)</span>}
                   </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPhotoStudio(true)}
+                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90"
+                    style={{ background: '#C9A54C' }}
+                  >
+                    <Sparkles size={12} />
+                    Photo Studio
+                  </button>
                 </div>
                 <div
                   className={`flex flex-wrap gap-2 p-2 rounded-xl border-2 border-dashed transition-colors ${dragOver ? 'border-[#1B3A6B] bg-blue-50' : 'border-gray-200'}`}
@@ -1241,6 +1252,16 @@ export default function AgentDashboardPage() {
                 />
               </div>
             </div>
+
+            {showPhotoStudio && (
+              <PhotoStudio
+                onComplete={urls => {
+                  setForm(f => ({ ...f, images: [...f.images, ...urls] }))
+                  setShowPhotoStudio(false)
+                }}
+                onClose={() => setShowPhotoStudio(false)}
+              />
+            )}
 
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
               <button
