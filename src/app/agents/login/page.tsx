@@ -1,19 +1,28 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { Shield } from 'lucide-react'
 import PasswordInput from '@/components/PasswordInput'
+import { useAuth } from '@/lib/auth-context'
 
 export default function AgentLoginPage() {
   const router = useRouter()
+  const { user, role, loading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Already signed in with agent access — skip the form entirely
+  useEffect(() => {
+    if (!authLoading && user && role && ['agent', 'admin', 'dev'].includes(role)) {
+      router.replace('/agents/dashboard')
+    }
+  }, [user, role, authLoading, router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

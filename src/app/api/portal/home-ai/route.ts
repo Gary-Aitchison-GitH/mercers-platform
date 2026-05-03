@@ -87,12 +87,43 @@ ${convosSummary}
 `.trim()
     }
   } else {
-    const [listingCount, clientCount] = await Promise.all([
+    const [listingCount, allClients, unassignedClients, newRequests] = await Promise.all([
       db.listing.count({ where: { status: 'AVAILABLE' } }),
-      db.client.count(),
+      db.client.findMany({
+        include: { assignedAgent: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+      }),
+      db.client.findMany({
+        where: { assignedAgentId: null },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+      db.featureRequest.count({ where: { status: 'new' } }),
     ])
     agentName = 'Admin'
-    contextData = `Platform Overview: ${listingCount} active listings, ${clientCount} total clients across all agents.`
+
+    const allAgents = await db.agent.findMany({ select: { name: true }, where: { isActive: true } })
+
+    const clientsSummary = allClients.length
+      ? allClients.map(c => `  • ${c.name} | ${c.clientType} | Stage: ${c.journeyStage} | Agent: ${c.assignedAgent?.name ?? 'UNASSIGNED'}${c.email ? ` | ${c.email}` : ''}`).join('\n')
+      : '  (none yet)'
+
+    const unassignedSummary = unassignedClients.length
+      ? unassignedClients.map(c => `  • ${c.name}${c.email ? ` (${c.email})` : ''} — signed up ${new Date(c.createdAt).toLocaleDateString('en-GB')}`).join('\n')
+      : '  (none)'
+
+    contextData = `
+ADMIN OVERVIEW
+Platform: ${listingCount} active listings | ${allClients.length} total clients | ${newRequests} new feature requests
+Active agents: ${allAgents.map(a => a.name).join(', ')}
+
+All Clients:
+${clientsSummary}
+
+Unassigned clients needing allocation (${unassignedClients.length}):
+${unassignedSummary}
+`.trim()
   }
 
   const today = new Date().toLocaleDateString('en-GB', {

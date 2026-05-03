@@ -576,10 +576,28 @@ export default function AgentDashboardPage() {
                       </div>
                     </div>
 
-                    {isAdmin && client.assignedAgent && (
-                      <p className="text-xs text-[var(--color-muted)] mt-2">
-                        Agent: {client.assignedAgent.name}
-                      </p>
+                    {isAdmin && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-xs text-[var(--color-muted)]">Agent:</span>
+                        <select
+                          value={client.assignedAgent?.id ?? ''}
+                          onChange={async e => {
+                            const token = await getToken()
+                            await fetch(`/api/portal/clients/${client.id}`, {
+                              method: 'PATCH',
+                              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ assignedAgentId: e.target.value || null }),
+                            })
+                            fetchClients()
+                          }}
+                          className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--color-navy-300)] bg-white text-[var(--color-navy-900)]"
+                        >
+                          <option value="">— Unassigned —</option>
+                          {agents.map(a => (
+                            <option key={a.id} value={a.id}>{a.name}</option>
+                          ))}
+                        </select>
+                      </div>
                     )}
 
                     {client.buyerRequirements.length > 0 && (
