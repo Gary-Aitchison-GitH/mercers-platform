@@ -2,6 +2,19 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+// Strip unescaped control characters inside JSON string values so JSON.parse
+// doesn't choke on multi-line bios returned by the model.
+function sanitizeJson(raw: string): string {
+  return raw.replace(/"((?:[^"\\]|\\.)*)"/gs, (_, inner) =>
+    '"' + inner.replace(/[\x00-\x1f]/g, c => {
+      if (c === '\n') return '\\n'
+      if (c === '\r') return '\\r'
+      if (c === '\t') return '\\t'
+      return ''
+    }) + '"'
+  )
+}
+
 // ─── Agent translations ───────────────────────────────────────────────────────
 
 interface AgentTranslations {
@@ -39,7 +52,7 @@ Respond with this exact JSON structure:
   const text = message.content[0].type === 'text' ? message.content[0].text : ''
   const jsonMatch = text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) throw new Error('No JSON in translation response')
-  return JSON.parse(jsonMatch[0]) as AgentTranslations
+  return JSON.parse(sanitizeJson(jsonMatch[0])) as AgentTranslations
 }
 
 // ─── Listing translations ─────────────────────────────────────────────────────
@@ -79,5 +92,5 @@ Respond with this exact JSON structure:
   const text = message.content[0].type === 'text' ? message.content[0].text : ''
   const jsonMatch = text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) throw new Error('No JSON in translation response')
-  return JSON.parse(jsonMatch[0]) as ListingTranslations
+  return JSON.parse(sanitizeJson(jsonMatch[0])) as ListingTranslations
 }
