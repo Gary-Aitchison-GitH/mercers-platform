@@ -5,8 +5,10 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 // Strip unescaped control characters inside JSON string values so JSON.parse
 // doesn't choke on multi-line bios returned by the model.
 function sanitizeJson(raw: string): string {
-  return raw.replace(/"((?:[^"\\]|\\.)*)"/gs, (_, inner) =>
-    '"' + inner.replace(/[\x00-\x1f]/g, c => {
+  // Replace unescaped control characters inside JSON string values.
+  // Uses [\s\S] instead of dotAll flag for broader TS target compatibility.
+  return raw.replace(/"((?:[^"\\]|\\[\s\S])*)"/g, (_, inner) =>
+    '"' + inner.replace(/[\x00-\x1f]/g, (c: string) => {
       if (c === '\n') return '\\n'
       if (c === '\r') return '\\r'
       if (c === '\t') return '\\t'
