@@ -43,7 +43,7 @@ export default function AgentCard({ agent, onContact }: Props) {
         <p className="text-sm font-medium mb-3" style={{ color: '#C9A54C' }}>{role}</p>
 
         {bio && (
-          <p className="text-sm text-gray-500 leading-relaxed mb-4 line-clamp-3">{bio}</p>
+          <p className="text-sm text-gray-500 leading-relaxed mb-4">{bio}</p>
         )}
 
         {/* Specialties */}

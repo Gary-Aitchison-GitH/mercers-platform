@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import {
-  X, Upload, Sparkles, Crop, Users, Toilet, CheckCircle2,
+  X, Upload, Sparkles, Crop, Users, CheckCircle2,
   Loader2, AlertCircle, ChevronLeft, ChevronRight, Images
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
@@ -22,7 +22,6 @@ interface Ops {
   enhance: boolean
   crop: boolean
   removePeople: boolean
-  fixToilets: boolean
 }
 
 interface Props {
@@ -33,12 +32,9 @@ interface Props {
 export default function PhotoStudio({ onComplete, onClose }: Props) {
   const { user } = useAuth()
   const [photos, setPhotos] = useState<Photo[]>([])
-  // removePeople and fixToilets require Cloudinary Generative Remove add-on — off by default until enabled
-  const [ops, setOps] = useState<Ops>({ enhance: true, crop: true, removePeople: false, fixToilets: false })
+  const [ops, setOps] = useState<Ops>({ enhance: true, crop: true, removePeople: false })
   const [processing, setProcessing] = useState(false)
   const [preview, setPreview] = useState<Photo | null>(null)
-  const [sliderPos, setSliderPos] = useState(50)
-  const sliderRef = useRef<HTMLDivElement>(null)
 
   const getToken = useCallback(async () => {
     if (!user) return ''
@@ -169,20 +165,10 @@ export default function PhotoStudio({ onComplete, onClose }: Props) {
     ))
   }
 
-  // Before/after slider logic
-  function handleSliderMove(e: React.MouseEvent | React.TouchEvent) {
-    if (!sliderRef.current) return
-    const rect = sliderRef.current.getBoundingClientRect()
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-    const pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))
-    setSliderPos(pct)
-  }
-
   const opsConfig = [
     { key: 'enhance' as const, icon: Sparkles, label: 'Auto-enhance', desc: 'Brightness, contrast, indoor lighting', addon: false },
     { key: 'crop' as const, icon: Crop, label: 'Crop to 5×7 landscape', desc: 'Smart crop preserves the room', addon: false },
     { key: 'removePeople' as const, icon: Users, label: 'Remove people & pets', desc: 'AI erases people, cats, dogs', addon: true },
-    { key: 'fixToilets' as const, icon: Toilet, label: 'Close toilet lids', desc: 'AI closes open toilet seats', addon: true },
   ]
 
   return (
@@ -264,7 +250,6 @@ export default function PhotoStudio({ onComplete, onClose }: Props) {
                       onClick={() => {
                         if (photo.status === 'done') {
                           setPreview(photo)
-                          setSliderPos(50)
                         } else if (photo.status === 'ready') {
                           updatePhoto(photo.id, { selected: !photo.selected })
                         }
@@ -420,17 +405,19 @@ export default function PhotoStudio({ onComplete, onClose }: Props) {
         </div>
       </div>
 
-      {/* Before/After preview modal */}
+      {/* Before/After preview modal — side-by-side full images */}
       {preview && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80" onClick={() => setPreview(null)}>
-          <div className="relative max-w-3xl w-full mx-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4" onClick={() => setPreview(null)}>
+          <div className="relative w-full max-w-5xl" onClick={e => e.stopPropagation()}>
+
+            {/* Toolbar */}
             <div className="flex items-center justify-between mb-3 px-1">
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
                     const idx = photos.findIndex(p => p.id === preview.id)
                     const prev = photos.slice(0, idx).reverse().find(p => p.status === 'done')
-                    if (prev) { setPreview(prev); setSliderPos(50) }
+                    if (prev) setPreview(prev)
                   }}
                   className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
                 >
@@ -440,7 +427,7 @@ export default function PhotoStudio({ onComplete, onClose }: Props) {
                   onClick={() => {
                     const idx = photos.findIndex(p => p.id === preview.id)
                     const next = photos.slice(idx + 1).find(p => p.status === 'done')
-                    if (next) { setPreview(next); setSliderPos(50) }
+                    if (next) setPreview(next)
                   }}
                   className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
                 >
@@ -453,39 +440,25 @@ export default function PhotoStudio({ onComplete, onClose }: Props) {
               </button>
             </div>
 
-            {/* Slider comparison */}
-            <div
-              ref={sliderRef}
-              className="relative rounded-xl overflow-hidden select-none cursor-col-resize"
-              style={{ aspectRatio: '7/5' }}
-              onMouseMove={e => e.buttons === 1 && handleSliderMove(e)}
-              onTouchMove={handleSliderMove}
-              onClick={handleSliderMove}
-            >
-              {/* After (full width, underneath) */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={preview.processedUrl!} alt="After" className="absolute inset-0 w-full h-full object-cover" />
-
-              {/* Before (clipped to left portion) */}
-              <div className="absolute inset-0 overflow-hidden" style={{ width: `${sliderPos}%` }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={preview.originalUrl} alt="Before" className="absolute inset-0 w-full h-full object-cover" style={{ width: `${10000 / sliderPos}%`, maxWidth: 'none' }} />
-              </div>
-
-              {/* Divider */}
-              <div className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg pointer-events-none" style={{ left: `${sliderPos}%` }}>
-                <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 bg-white rounded-full shadow-xl flex items-center justify-center">
-                  <ChevronLeft size={10} className="text-gray-600 -mr-0.5" />
-                  <ChevronRight size={10} className="text-gray-600 -ml-0.5" />
+            {/* Side-by-side: each image is full and complete */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-2">
+                <span className="text-center text-xs font-bold text-white/70 uppercase tracking-wider">Before</span>
+                <div className="rounded-xl overflow-hidden bg-black" style={{ aspectRatio: '4/3' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={preview.originalUrl} alt="Before" className="w-full h-full object-contain" />
                 </div>
               </div>
-
-              {/* Labels */}
-              <div className="absolute bottom-3 left-3 bg-black/60 text-white text-xs font-semibold px-2 py-1 rounded-full">Before</div>
-              <div className="absolute bottom-3 right-3 bg-[#1B3A6B]/80 text-white text-xs font-semibold px-2 py-1 rounded-full">After</div>
+              <div className="flex flex-col gap-2">
+                <span className="text-center text-xs font-bold text-[#C9A54C] uppercase tracking-wider">After</span>
+                <div className="rounded-xl overflow-hidden bg-black" style={{ aspectRatio: '4/3' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={preview.processedUrl!} alt="After" className="w-full h-full object-contain" />
+                </div>
+              </div>
             </div>
 
-            <p className="text-center text-white/50 text-xs mt-2">Drag the slider to compare · Click background to close</p>
+            <p className="text-center text-white/40 text-xs mt-3">Click background to close · use arrows to browse processed photos</p>
           </div>
         </div>
       )}

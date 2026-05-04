@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAdminAuth } from '@/lib/firebase-admin'
 import { getDb } from '@/lib/db'
+import { translateAgent } from '@/lib/translate'
 
 async function verifyStaff(req: NextRequest) {
   const token = req.headers.get('Authorization')?.replace('Bearer ', '')
@@ -36,17 +37,37 @@ export async function PUT(req: NextRequest) {
 
   const { role, bio, phone, specialties, regionalPresence, image } = await req.json()
 
-  const agent = await db.agent.update({
-    where: { firebaseUid: decoded.uid },
-    data: {
-      ...(role !== undefined && { role }),
-      ...(bio !== undefined && { bio }),
-      ...(phone !== undefined && { phone }),
-      ...(specialties !== undefined && { specialties }),
-      ...(regionalPresence !== undefined && { regionalPresence }),
-      ...(image !== undefined && { image }),
-    },
-  })
+  // Guard: never let "dev" permission string overwrite the display job title
+  const safeRole = role !== undefined && role === 'dev' ? undefined : role
+
+  // Fetch current values so we can translate even when only one field changed
+  const current = await db.agent.findUnique({ where: { firebaseUid: decoded.uid }, select: { bio: true, role: true } })
+
+  const updateData: Record<string, unknown> = {
+    ...(safeRole !== undefined && { role: safeRole }),
+    ...(bio !== undefined && { bio }),
+    ...(phone !== undefined && { phone }),
+    ...(specialties !== undefined && { specialties }),
+    ...(regionalPresence !== undefined && { regionalPresence }),
+    ...(image !== undefined && { image }),
+  }
+
+  // Auto-translate whenever bio or role changes
+  if ((bio !== undefined || safeRole !== undefined) && current) {
+    const bioToTranslate = bio ?? current.bio ?? ''
+    const roleToTranslate = safeRole ?? current.role ?? ''
+    if (bioToTranslate.trim() || roleToTranslate.trim()) {
+      try {
+        const translations = await translateAgent(bioToTranslate, roleToTranslate)
+        Object.assign(updateData, translations)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        console.error('[me] translation failed, saving without translations. Error:', msg)
+      }
+    }
+  }
+
+  const agent = await db.agent.update({ where: { firebaseUid: decoded.uid }, data: updateData })
 
   return Response.json({ agent })
 }

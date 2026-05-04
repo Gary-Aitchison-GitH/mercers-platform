@@ -30,6 +30,10 @@ model Agent {
   email            String   @unique
   phone            String
   bio              String
+  bioSn            String?
+  bioNd            String?
+  roleSn           String?
+  roleNd           String?
   regionalPresence String[]
   specialties      String[]
   image            String?

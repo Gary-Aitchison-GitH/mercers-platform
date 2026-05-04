@@ -608,7 +608,7 @@ export default function AgentDashboardPage() {
             <WelcomeHint id="listings-v1" title="Your listings workspace">
               <p>Use <strong>Mine / All</strong> to switch between your listings and the full team view.</p>
               <p>Click <strong>+ New listing</strong> to add a property — AI description writing is built in.</p>
-              <p>When editing a listing, hit the gold <strong>Photo Studio</strong> button to bulk-edit photos with AI: auto-enhance, crop to 5×7, remove people & pets, and close toilet lids.</p>
+              <p>When editing a listing, hit the gold <strong>Photo Studio</strong> button to bulk-edit photos with AI: auto-enhance, crop to 5×7, and remove people & pets.</p>
             </WelcomeHint>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">

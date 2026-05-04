@@ -109,7 +109,7 @@ export function ProfileTab({ getToken }: Props) {
           if (cancelled || !d.agent) return
           setProfile(d.agent)
           setForm({
-            role: d.agent.role ?? '',
+            role: d.agent.role === 'dev' ? '' : (d.agent.role ?? ''),
             bio: d.agent.bio ?? '',
             phone: d.agent.phone ?? '',
             specialties: d.agent.specialties ?? [],

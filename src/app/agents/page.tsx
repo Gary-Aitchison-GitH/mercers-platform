@@ -15,26 +15,32 @@ type DbAgent = {
   id: string
   name: string
   role: string
+  roleSn: string | null
+  roleNd: string | null
   email: string
   phone: string
   bio: string
+  bioSn: string | null
+  bioNd: string | null
   specialties: string[]
   regionalPresence: string[]
   image: string | null
 }
 
 function normalizeAgent(a: DbAgent): Agent {
+  const role = a.role || 'Property Consultant'
+  const bio = a.bio || ''
   return {
     id: a.id,
     name: a.name,
-    role: a.role || 'Property Consultant',
-    roleSn: a.role || 'Property Consultant',
-    roleNd: a.role || 'Property Consultant',
+    role,
+    roleSn: a.roleSn || role,
+    roleNd: a.roleNd || role,
     email: a.email,
     phone: a.phone || '',
-    bio: a.bio || '',
-    bioSn: a.bio || '',
-    bioNd: a.bio || '',
+    bio,
+    bioSn: a.bioSn || bio,
+    bioNd: a.bioNd || bio,
     specialties: a.specialties || [],
     regionalPresence: a.regionalPresence || [],
     image: a.image || '',

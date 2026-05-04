@@ -2,6 +2,48 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+// ─── Agent translations ───────────────────────────────────────────────────────
+
+interface AgentTranslations {
+  bioSn: string
+  bioNd: string
+  roleSn: string
+  roleNd: string
+}
+
+export async function translateAgent(bio: string, role: string): Promise<AgentTranslations> {
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 2048,
+    system: `You are a professional translator for a Zimbabwe real estate agency.
+Translate agent bios and job titles accurately into Shona (sn) and Ndebele (nd).
+Keep proper names, place names, and English real-estate terms (e.g. USD, m², agent) as-is.
+Respond with valid JSON only, no other text.`,
+    messages: [{
+      role: 'user',
+      content: `Translate the following agent bio and job title into both Shona and Ndebele.
+
+Job title: ${role}
+Bio: ${bio}
+
+Respond with this exact JSON structure:
+{
+  "roleSn": "...",
+  "roleNd": "...",
+  "bioSn": "...",
+  "bioNd": "..."
+}`,
+    }],
+  })
+
+  const text = message.content[0].type === 'text' ? message.content[0].text : ''
+  const jsonMatch = text.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) throw new Error('No JSON in translation response')
+  return JSON.parse(jsonMatch[0]) as AgentTranslations
+}
+
+// ─── Listing translations ─────────────────────────────────────────────────────
+
 interface ListingTranslations {
   titleSn: string
   titleNd: string

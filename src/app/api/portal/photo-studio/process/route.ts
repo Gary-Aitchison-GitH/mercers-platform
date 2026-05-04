@@ -51,9 +51,11 @@ export async function POST(req: NextRequest) {
               send({ publicId, status: 'error', message: 'No output URL returned' })
             }
           } catch (err) {
-            const message = err instanceof Error ? err.message : 'Processing failed'
-            console.error(`[photo-studio] error for ${publicId}:`, err)
-            send({ publicId, status: 'error', message })
+            // Extract Cloudinary API error detail (e.g. "Add-on not enabled", "Invalid parameter")
+            const cloudErr = err as { error?: { message?: string; http_code?: number }; http_code?: number; message?: string }
+            const detail = cloudErr?.error?.message ?? cloudErr?.message ?? (err instanceof Error ? err.message : 'Processing failed')
+            console.error(`[photo-studio] error for ${publicId}:`, JSON.stringify(err, null, 2))
+            send({ publicId, status: 'error', message: detail })
           }
         })
       )
