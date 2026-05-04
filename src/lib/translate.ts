@@ -2,21 +2,6 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-// Strip unescaped control characters inside JSON string values so JSON.parse
-// doesn't choke on multi-line bios returned by the model.
-function sanitizeJson(raw: string): string {
-  // Replace unescaped control characters inside JSON string values.
-  // Uses [\s\S] instead of dotAll flag for broader TS target compatibility.
-  return raw.replace(/"((?:[^"\\]|\\[\s\S])*)"/g, (_, inner) =>
-    '"' + inner.replace(/[\x00-\x1f]/g, (c: string) => {
-      if (c === '\n') return '\\n'
-      if (c === '\r') return '\\r'
-      if (c === '\t') return '\\t'
-      return ''
-    }) + '"'
-  )
-}
-
 // ─── Agent translations ───────────────────────────────────────────────────────
 
 interface AgentTranslations {
@@ -30,31 +15,33 @@ export async function translateAgent(bio: string, role: string): Promise<AgentTr
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 2048,
+    tools: [{
+      name: 'provide_translations',
+      description: 'Provide the Shona and Ndebele translations',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          roleSn: { type: 'string', description: 'Job title in Shona' },
+          roleNd: { type: 'string', description: 'Job title in Ndebele' },
+          bioSn:  { type: 'string', description: 'Agent bio in Shona' },
+          bioNd:  { type: 'string', description: 'Agent bio in Ndebele' },
+        },
+        required: ['roleSn', 'roleNd', 'bioSn', 'bioNd'],
+      },
+    }],
+    tool_choice: { type: 'tool', name: 'provide_translations' },
     system: `You are a professional translator for a Zimbabwe real estate agency.
 Translate agent bios and job titles accurately into Shona (sn) and Ndebele (nd).
-Keep proper names, place names, and English real-estate terms (e.g. USD, m², agent) as-is.
-Respond with valid JSON only, no other text.`,
+Keep proper names, place names, and English real-estate terms (e.g. USD, m², agent) as-is.`,
     messages: [{
       role: 'user',
-      content: `Translate the following agent bio and job title into both Shona and Ndebele.
-
-Job title: ${role}
-Bio: ${bio}
-
-Respond with this exact JSON structure:
-{
-  "roleSn": "...",
-  "roleNd": "...",
-  "bioSn": "...",
-  "bioNd": "..."
-}`,
+      content: `Translate this agent job title and bio into Shona and Ndebele.\n\nJob title: ${role}\n\nBio:\n${bio}`,
     }],
   })
 
-  const text = message.content[0].type === 'text' ? message.content[0].text : ''
-  const jsonMatch = text.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) throw new Error('No JSON in translation response')
-  return JSON.parse(sanitizeJson(jsonMatch[0])) as AgentTranslations
+  const toolUse = message.content.find(b => b.type === 'tool_use')
+  if (!toolUse || toolUse.type !== 'tool_use') throw new Error('No tool_use block in translation response')
+  return toolUse.input as AgentTranslations
 }
 
 // ─── Listing translations ─────────────────────────────────────────────────────
@@ -70,29 +57,31 @@ export async function translateListing(title: string, description: string): Prom
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 2048,
+    tools: [{
+      name: 'provide_translations',
+      description: 'Provide the Shona and Ndebele translations',
+      input_schema: {
+        type: 'object' as const,
+        properties: {
+          titleSn:       { type: 'string', description: 'Listing title in Shona' },
+          titleNd:       { type: 'string', description: 'Listing title in Ndebele' },
+          descriptionSn: { type: 'string', description: 'Listing description in Shona' },
+          descriptionNd: { type: 'string', description: 'Listing description in Ndebele' },
+        },
+        required: ['titleSn', 'titleNd', 'descriptionSn', 'descriptionNd'],
+      },
+    }],
+    tool_choice: { type: 'tool', name: 'provide_translations' },
     system: `You are a professional translator for a Zimbabwe real estate agency.
 Translate property listings accurately into Shona (sn) and Ndebele (nd).
-Keep property-specific terms (bedroom, bathroom, USD, m², etc.) in English.
-Respond with valid JSON only, no other text.`,
+Keep property-specific terms (bedroom, bathroom, USD, m², etc.) in English.`,
     messages: [{
       role: 'user',
-      content: `Translate this property listing title and description into both Shona and Ndebele.
-
-Title: ${title}
-Description: ${description}
-
-Respond with this exact JSON structure:
-{
-  "titleSn": "...",
-  "titleNd": "...",
-  "descriptionSn": "...",
-  "descriptionNd": "..."
-}`,
+      content: `Translate this property listing into Shona and Ndebele.\n\nTitle: ${title}\n\nDescription:\n${description}`,
     }],
   })
 
-  const text = message.content[0].type === 'text' ? message.content[0].text : ''
-  const jsonMatch = text.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) throw new Error('No JSON in translation response')
-  return JSON.parse(sanitizeJson(jsonMatch[0])) as ListingTranslations
+  const toolUse = message.content.find(b => b.type === 'tool_use')
+  if (!toolUse || toolUse.type !== 'tool_use') throw new Error('No tool_use block in translation response')
+  return toolUse.input as ListingTranslations
 }
