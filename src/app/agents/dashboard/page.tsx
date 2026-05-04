@@ -152,6 +152,7 @@ export default function AgentDashboardPage() {
   const [updatingRequestId, setUpdatingRequestId] = useState<string | null>(null)
   const [unreadThreads, setUnreadThreads] = useState(0)
   const [readThreadIds, setReadThreadIds] = useState<Set<string>>(new Set())
+  const [currentAgentId, setCurrentAgentId] = useState<string | null>(null)
 
   // listing modal
   const [showModal, setShowModal] = useState(false)
@@ -193,6 +194,17 @@ export default function AgentDashboardPage() {
   // Fetch agents once on mount for admin/dev (needed for listing form dropdown)
   useEffect(() => {
     if (user && isAdmin) fetchAgents()
+  }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch current agent's own ID so ThreadsTab can correctly detect unread messages from other agents
+  useEffect(() => {
+    if (!user) return
+    user.getIdToken().then(token =>
+      fetch('/api/portal/me', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(d => { if (d.agent?.id) setCurrentAgentId(d.agent.id) })
+        .catch(() => {})
+    )
   }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Unread thread count — fetch once on mount for the initial tab badge.
@@ -262,7 +274,8 @@ export default function AgentDashboardPage() {
   async function fetchAgents() {
     setFetching(true)
     try {
-      const res = await fetch('/api/agents')
+      const token = await user!.getIdToken()
+      const res = await fetch('/api/portal/agents', { headers: { Authorization: `Bearer ${token}` } })
       const data = await res.json()
       setAgents(data.agents ?? [])
     } finally {
@@ -808,6 +821,7 @@ export default function AgentDashboardPage() {
         {activeTab === 'threads' && (
           <ThreadsTab
             getToken={() => user!.getIdToken()}
+            currentAgentId={currentAgentId}
             clients={clients.map(c => ({ id: c.id, name: c.name, email: c.email }))}
             agents={agents.map(a => ({ id: a.id, name: a.name, email: a.email }))}
             listings={listings.map(l => ({ id: l.id, title: l.title, location: l.location, images: l.images }))}

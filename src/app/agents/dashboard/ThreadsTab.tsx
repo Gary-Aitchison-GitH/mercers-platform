@@ -13,6 +13,7 @@ type Participant = {
   participantType: 'AGENT' | 'CLIENT'
   agent: { id: string; name: string; email?: string } | null
   client: { id: string; name: string; email?: string } | null
+  lastReadAt: string | null
 }
 
 type ThreadMessage = {
@@ -83,6 +84,7 @@ function threadLabel(t: Thread) {
 
 export function ThreadsTab({
   getToken,
+  currentAgentId,
   clients,
   agents,
   listings,
@@ -93,6 +95,7 @@ export function ThreadsTab({
   onMarkRead,
 }: {
   getToken: () => Promise<string>
+  currentAgentId: string | null
   clients: ClientOption[]
   agents: AgentOption[]
   listings: ListingOption[]
@@ -121,10 +124,21 @@ export function ThreadsTab({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [selected?.messages])
 
+  function isUnread(t: Thread) {
+    if (readIds.has(t.id)) return false // optimistic client-side mark
+    const last = t.messages[0]
+    if (!last) return false
+    if (last.senderId === currentAgentId) return false // I sent it
+    const myParticipant = t.participants.find(p => p.agent?.id === currentAgentId)
+    const lastReadAt = myParticipant?.lastReadAt ? new Date(myParticipant.lastReadAt) : null
+    if (!lastReadAt) return last.senderType !== 'AI' // never opened — unread if not AI
+    return new Date(last.createdAt) > lastReadAt
+  }
+
   useEffect(() => {
-    const count = threads.filter(t => !readIds.has(t.id) && t.messages[0]?.senderType === 'CLIENT').length
+    const count = threads.filter(isUnread).length
     onUnreadChange?.(count)
-  }, [threads, readIds]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [threads, readIds, currentAgentId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchThreads() {
     setLoadingThreads(true)
@@ -299,7 +313,7 @@ export function ThreadsTab({
                       key={t.id}
                       thread={t}
                       active={selected?.id === t.id}
-                      unread={!readIds.has(t.id) && t.messages[0]?.senderType === 'CLIENT'}
+                      unread={isUnread(t)}
                       onClick={() => openThread(t)}
                     />
                   ))}
@@ -315,7 +329,7 @@ export function ThreadsTab({
                       key={t.id}
                       thread={t}
                       active={selected?.id === t.id}
-                      unread={!readIds.has(t.id) && t.messages[0]?.senderType === 'CLIENT'}
+                      unread={isUnread(t)}
                       onClick={() => openThread(t)}
                     />
                   ))}

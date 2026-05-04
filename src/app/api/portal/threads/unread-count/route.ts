@@ -23,28 +23,36 @@ export async function GET(req: NextRequest) {
   if (!db) return Response.json({ count: 0 })
 
   const isAdmin = ['admin', 'dev'].includes(decoded.role as string)
+  const agent = isAdmin ? null : await getOrCreateAgent(db, decoded)
 
   let participantFilter = {}
-  if (!isAdmin) {
-    const agent = await getOrCreateAgent(db, decoded)
-    if (agent) {
-      participantFilter = { participants: { some: { agentId: agent.id } } }
-    }
+  if (!isAdmin && agent) {
+    participantFilter = { participants: { some: { agentId: agent.id } } }
   }
 
-  // Threads where the last message is from a CLIENT — meaning the agent needs to respond
   const threads = await db.thread.findMany({
     where: { status: 'active', ...participantFilter },
     select: {
+      participants: {
+        where: agent ? { agentId: agent.id } : {},
+        select: { lastReadAt: true },
+      },
       messages: {
         orderBy: { createdAt: 'desc' },
         take: 1,
-        select: { senderType: true },
+        select: { senderType: true, senderId: true, createdAt: true },
       },
     },
   })
 
-  const count = threads.filter(t => t.messages[0]?.senderType === 'CLIENT').length
+  const count = threads.filter(t => {
+    const last = t.messages[0]
+    if (!last) return false
+    if (last.senderId === agent?.id) return false // I sent it
+    const lastReadAt = t.participants[0]?.lastReadAt
+    if (!lastReadAt) return true // never read this thread
+    return last.createdAt > lastReadAt
+  }).length
 
   return Response.json({ count })
 }

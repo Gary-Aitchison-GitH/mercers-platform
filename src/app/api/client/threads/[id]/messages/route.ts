@@ -34,7 +34,7 @@ export async function POST(
 
   const thread = await db.thread.findUnique({
     where: { id: threadId },
-    select: { participants: { select: { clientId: true } } },
+    select: { participants: { select: { clientId: true, participantType: true } } },
   })
   if (!thread) return Response.json({ error: 'Not found' }, { status: 404 })
 
@@ -69,11 +69,11 @@ export async function POST(
   ])
 
   if (threadFull) {
-    const threadTitle = threadFull.listing?.title ?? threadFull.participants.find(p => p.participantType === 'CLIENT')?.agent?.name ?? 'Conversation'
+    const threadTitle = threadFull.listing?.title ?? threadFull.title ?? 'Conversation'
     const agentRecipients = threadFull.participants
       .filter(p => p.participantType === 'AGENT' && p.agent?.email)
-      .map(p => ({ name: p.agent!.name, email: p.agent!.email }))
-    notifyThreadParticipants({
+      .map(p => ({ name: p.agent!.name, email: p.agent!.email! }))
+    await notifyThreadParticipants({
       recipients: agentRecipients,
       senderName: client.name,
       threadTitle,

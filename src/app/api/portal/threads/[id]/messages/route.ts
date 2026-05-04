@@ -46,7 +46,10 @@ export async function POST(
     include: {
       listing: { select: { title: true } },
       participants: {
-        include: { client: { select: { name: true, email: true } } },
+        include: {
+          client: { select: { name: true, email: true } },
+          agent: { select: { id: true, name: true, email: true } },
+        },
       },
     },
   })
@@ -65,17 +68,33 @@ export async function POST(
   ])
 
   if (thread) {
-    const threadTitle = thread.listing?.title ?? thread.participants.find(p => p.participantType === 'AGENT')?.client?.name ?? 'Conversation'
+    const threadTitle = thread.listing?.title ?? thread.title ?? 'Conversation'
     const clientRecipients = thread.participants
       .filter(p => p.participantType === 'CLIENT' && p.client?.email)
       .map(p => ({ name: p.client!.name, email: p.client!.email! }))
-    notifyThreadParticipants({
-      recipients: clientRecipients,
-      senderName: agent.name,
-      threadTitle,
-      messagePreview: content.trim(),
-      portalPath: 'client',
-    }).catch(e => console.error('[thread-messages] email error:', e))
+    const agentRecipients = thread.participants
+      .filter(p => p.participantType === 'AGENT' && p.agent?.email && p.agent.id !== agent.id)
+      .map(p => ({ name: p.agent!.name, email: p.agent!.email! }))
+    const emailPromises: Promise<void>[] = []
+    if (clientRecipients.length) {
+      emailPromises.push(notifyThreadParticipants({
+        recipients: clientRecipients,
+        senderName: agent.name,
+        threadTitle,
+        messagePreview: content.trim(),
+        portalPath: 'client',
+      }))
+    }
+    if (agentRecipients.length) {
+      emailPromises.push(notifyThreadParticipants({
+        recipients: agentRecipients,
+        senderName: agent.name,
+        threadTitle,
+        messagePreview: content.trim(),
+        portalPath: 'agents',
+      }))
+    }
+    await Promise.allSettled(emailPromises)
   }
 
   return Response.json({ message }, { status: 201 })

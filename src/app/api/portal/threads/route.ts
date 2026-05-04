@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getAdminAuth } from '@/lib/firebase-admin'
 import { getDb } from '@/lib/db'
 import { getOrCreateAgent } from '@/lib/get-agent'
+import { notifyThreadParticipants } from '@/lib/email'
 
 async function verifyStaff(req: NextRequest) {
   const token = req.headers.get('Authorization')?.replace('Bearer ', '')
@@ -122,7 +123,7 @@ export async function POST(req: NextRequest) {
       listing: { select: { id: true, title: true, location: true, images: true, status: true } },
       participants: {
         include: {
-          agent: { select: { id: true, name: true } },
+          agent: { select: { id: true, name: true, email: true } },
           client: { select: { id: true, name: true, email: true } },
         },
       },
@@ -130,6 +131,25 @@ export async function POST(req: NextRequest) {
       milestones: true,
     },
   })
+
+  // Notify other participants about the first message
+  if (firstMessage?.trim()) {
+    const threadTitle = thread.listing?.title ?? thread.title ?? 'Conversation'
+    const clientRecipients = thread.participants
+      .filter(p => p.participantType === 'CLIENT' && p.client?.email)
+      .map(p => ({ name: p.client!.name, email: p.client!.email! }))
+    const agentRecipients = thread.participants
+      .filter(p => p.participantType === 'AGENT' && p.agent?.email && p.agent.id !== agent.id)
+      .map(p => ({ name: p.agent!.name, email: p.agent!.email! }))
+    const emailPromises = []
+    if (clientRecipients.length) {
+      emailPromises.push(notifyThreadParticipants({ recipients: clientRecipients, senderName: agent.name, threadTitle, messagePreview: firstMessage.trim(), portalPath: 'client' }))
+    }
+    if (agentRecipients.length) {
+      emailPromises.push(notifyThreadParticipants({ recipients: agentRecipients, senderName: agent.name, threadTitle, messagePreview: firstMessage.trim(), portalPath: 'agents' }))
+    }
+    await Promise.allSettled(emailPromises)
+  }
 
   return Response.json({ thread }, { status: 201 })
 }

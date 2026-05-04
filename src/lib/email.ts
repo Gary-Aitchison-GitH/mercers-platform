@@ -1,6 +1,6 @@
 import { Resend } from 'resend'
 
-const APP_URL = 'https://mercers-properties.vercel.app'
+const APP_URL = 'https://mercers.properties'
 
 function getResend() {
   if (!process.env.RESEND_API_KEY) return null
@@ -85,7 +85,7 @@ export async function notifyThreadParticipants({
     ? messagePreview.slice(0, 200) + '…'
     : messagePreview
 
-  await Promise.allSettled(
+  const results = await Promise.allSettled(
     recipients.map(r =>
       resend.emails.send({
         from: FROM,
@@ -101,4 +101,11 @@ export async function notifyThreadParticipants({
       })
     )
   )
+  results.forEach((result, i) => {
+    if (result.status === 'rejected') {
+      console.error(`[email] FAILED to ${recipients[i].email}:`, result.reason)
+    } else {
+      console.log(`[email] sent to ${recipients[i].email}:`, JSON.stringify(result.value))
+    }
+  })
 }

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAdminAuth } from '@/lib/firebase-admin'
 import { getDb } from '@/lib/db'
+import { getOrCreateAgent } from '@/lib/get-agent'
 
 async function verifyStaff(req: NextRequest) {
   const token = req.headers.get('Authorization')?.replace('Bearer ', '')
@@ -25,6 +26,15 @@ export async function GET(
   if (!db) return Response.json({ error: 'Database unavailable' }, { status: 503 })
 
   const { id } = await params
+
+  // Mark this thread as read for the opening agent
+  const agent = await getOrCreateAgent(db, decoded)
+  if (agent) {
+    await db.threadParticipant.updateMany({
+      where: { threadId: id, agentId: agent.id },
+      data: { lastReadAt: new Date() },
+    })
+  }
 
   const thread = await db.thread.findUnique({
     where: { id },
