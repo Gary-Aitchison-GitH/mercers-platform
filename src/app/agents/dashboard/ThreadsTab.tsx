@@ -110,7 +110,6 @@ export function ThreadsTab({
   const [loadingThreads, setLoadingThreads] = useState(false)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [sending, setSending] = useState(false)
-  const [aiReplying, setAiReplying] = useState(false)
   const [messageText, setMessageText] = useState('')
   const [showNewModal, setShowNewModal] = useState(false)
   const [showMilestoneForm, setShowMilestoneForm] = useState(false)
@@ -181,27 +180,9 @@ export function ThreadsTab({
         setSelected(s => s ? { ...s, messages: [...s.messages, data.message] } : s)
         setMessageText('')
         fetchThreads()
-        triggerAiReply(selected.id, token)
       }
     } finally {
       setSending(false)
-    }
-  }
-
-  async function triggerAiReply(threadId: string, token: string) {
-    setAiReplying(true)
-    try {
-      const res = await fetch(`/api/portal/threads/${threadId}/ai-reply`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (data.message) {
-        setSelected(s => s && s.id === threadId ? { ...s, messages: [...s.messages, data.message] } : s)
-        fetchThreads()
-      }
-    } finally {
-      setAiReplying(false)
     }
   }
 
@@ -261,11 +242,11 @@ export function ThreadsTab({
   const generalThreads = filteredThreads.filter(t => t.type === 'GENERAL')
 
   return (
-    <div className="flex gap-0 h-[calc(100vh-160px)] min-h-[500px]">
+    <div className="flex gap-0 h-[calc(100vh-160px)] min-h-[500px] rounded-xl border border-gray-200 overflow-hidden shadow-sm bg-white">
 
       {/* ── Thread list ── */}
-      <div className="w-72 shrink-0 border-r border-gray-100 flex flex-col">
-        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+      <div className="w-72 shrink-0 border-r border-gray-200 flex flex-col bg-slate-50">
+        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-white">
           <h2 className="font-bold text-[var(--color-navy-900)] text-sm">Conversations</h2>
           <button
             onClick={() => setShowNewModal(true)}
@@ -350,7 +331,7 @@ export function ThreadsTab({
         ) : (
           <>
             {/* Thread header */}
-            <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-3">
+            <div className="px-5 py-3 border-b border-gray-200 bg-white flex items-center gap-3">
               {selected.listing?.images[0] ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={selected.listing.images[0]} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
@@ -372,7 +353,7 @@ export function ThreadsTab({
             <div className="flex-1 flex min-h-0">
               {/* Messages */}
               <div className="flex-1 flex flex-col min-w-0">
-                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-slate-50/60">
                   {loadingDetail ? (
                     <div className="flex items-center justify-center py-12">
                       <Loader2 size={20} className="animate-spin text-[var(--color-muted)]" />
@@ -384,19 +365,24 @@ export function ThreadsTab({
                       <MessageBubble key={msg.id} message={msg} />
                     ))
                   )}
-                  {aiReplying && <AiTypingIndicator />}
                   <div ref={messagesEndRef} />
                 </div>
 
                 {/* Message input */}
-                <div className="px-5 py-3 border-t border-gray-100">
-                  <div className="flex gap-2">
-                    <input
+                <div className="px-4 py-3 border-t border-gray-200 bg-white">
+                  <div className="flex items-end gap-2">
+                    <textarea
                       value={messageText}
-                      onChange={e => setMessageText(e.target.value)}
+                      rows={1}
+                      onChange={e => {
+                        setMessageText(e.target.value)
+                        e.target.style.height = 'auto'
+                        e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`
+                      }}
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
-                      placeholder="Type a message…"
-                      className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-navy-300)]"
+                      placeholder="Type a message… (Shift+Enter for new line)"
+                      className="flex-1 border-2 border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 bg-white focus:outline-none focus:border-[var(--color-navy-500)] focus:ring-0 resize-none overflow-hidden leading-relaxed transition-colors"
+                      style={{ minHeight: '42px', maxHeight: '120px' }}
                     />
                     <button
                       onClick={sendMessage}
@@ -406,12 +392,13 @@ export function ThreadsTab({
                       {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
                     </button>
                   </div>
+                  <p className="text-[10px] text-gray-400 mt-1.5 pl-1">Enter to send · Shift+Enter for new line</p>
                 </div>
               </div>
 
               {/* Milestones sidebar */}
-              <div className="w-56 shrink-0 border-l border-gray-100 flex flex-col">
-                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+              <div className="w-56 shrink-0 border-l border-gray-200 flex flex-col bg-white">
+                <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <Flag size={13} className="text-[var(--color-navy-700)]" />
                     <span className="text-xs font-semibold text-[var(--color-navy-900)]">Milestones</span>
@@ -591,10 +578,10 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
       <div
         className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
           isMe
-            ? 'bg-[var(--color-navy-800)] text-white rounded-br-sm'
+            ? 'bg-[var(--color-navy-800)] text-white rounded-br-sm shadow-sm'
             : isAI
-            ? 'bg-amber-50 text-amber-900 border border-amber-100 rounded-bl-sm'
-            : 'bg-gray-100 text-[var(--color-navy-900)] rounded-bl-sm'
+            ? 'bg-amber-50 text-amber-900 border border-amber-200 rounded-bl-sm shadow-sm'
+            : 'bg-white text-[var(--color-navy-900)] border border-gray-200 rounded-bl-sm shadow-sm'
         }`}
       >
         {message.content}

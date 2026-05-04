@@ -48,13 +48,27 @@ export async function POST(req: NextRequest) {
     if (agent) {
       agentName = agent.name
 
-      const recentConvos = await db.conversation.findMany({
-        orderBy: { createdAt: 'desc' },
-        take: 5,
+      const threadParticipations = await db.threadParticipant.findMany({
+        where: { agentId: agent.id },
+        select: { threadId: true },
+      })
+      const threadIds = threadParticipations.map(p => p.threadId)
+
+      const threads = await db.thread.findMany({
+        where: { id: { in: threadIds }, status: 'active' },
         include: {
-          client: { select: { name: true } },
-          messages: { orderBy: { createdAt: 'desc' }, take: 1 },
+          listing: { select: { title: true, location: true } },
+          participants: {
+            include: {
+              agent: { select: { name: true } },
+              client: { select: { name: true, clientType: true } },
+            },
+          },
+          messages: { orderBy: { createdAt: 'asc' }, take: 10 },
+          milestones: { orderBy: { sortOrder: 'asc' } },
         },
+        orderBy: { updatedAt: 'desc' },
+        take: 20,
       })
 
       const listingsSummary = agent.listings.length
@@ -65,12 +79,32 @@ export async function POST(req: NextRequest) {
         ? agent.clientsAssigned.map(c => `  • ${c.name} | ${c.clientType} | Stage: ${c.journeyStage}${c.email ? ` | ${c.email}` : ''}`).join('\n')
         : '  (none yet)'
 
-      const convosSummary = recentConvos.length
-        ? recentConvos.map(c => {
-            const msg = c.messages[0]?.content?.slice(0, 80) ?? 'no messages'
-            return `  • ${c.client?.name ?? 'Visitor'}: "${msg}"`
-          }).join('\n')
-        : '  (none yet)'
+      const threadsSummary = threads.length
+        ? threads.map(t => {
+            const label = t.listing
+              ? `${t.listing.title} (${t.listing.location})`
+              : (t.title ?? 'General thread')
+            const clients = t.participants
+              .filter(p => p.participantType === 'CLIENT')
+              .map(p => p.client?.name)
+              .filter(Boolean)
+              .join(', ') || 'no clients'
+            const milestones = t.milestones.length
+              ? t.milestones.map(m => `      [${m.status}] ${m.title}`).join('\n')
+              : '      (no milestones set)'
+            const msgs = t.messages.length
+              ? t.messages.map(m => {
+                  const who = m.senderType === 'AI' ? 'AI' : (m.senderName ?? m.senderType)
+                  return `      ${who}: ${m.content.slice(0, 150)}`
+                }).join('\n')
+              : '      (no messages yet)'
+            return `  Thread: "${label}" | Clients: ${clients}
+    Milestones:
+${milestones}
+    Recent messages (up to 10):
+${msgs}`
+          }).join('\n\n')
+        : '  (no active threads)'
 
       contextData = `
 AGENT PIPELINE DATA
@@ -82,8 +116,8 @@ ${listingsSummary}
 Assigned Clients (${agent.clientsAssigned.length}):
 ${clientsSummary}
 
-Recent Website Conversations:
-${convosSummary}
+Conversation Threads (${threads.length} active):
+${threadsSummary}
 `.trim()
     }
   } else {
@@ -146,6 +180,8 @@ YOUR ROLE:
 - Identify which clients need urgent follow-up based on journey stage (viewing and offer stages are most time-sensitive)
 - Answer specific questions about listings, clients, and deals
 - Suggest match opportunities between clients and available listings
+- Review specific conversation threads when asked (e.g. "what still needs doing on Vic Falls?") — use the thread milestones and message history in your context to give a precise answer
+- Flag threads where action appears overdue or a client hasn't had a response
 - Be concise — lead with the most actionable insight, keep responses under 250 words unless drafting a document
 - Tone: confident, professional, warm — like a smart colleague, not a chatbot`
 

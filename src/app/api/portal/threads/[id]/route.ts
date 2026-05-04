@@ -27,13 +27,17 @@ export async function GET(
 
   const { id } = await params
 
-  // Mark this thread as read for the opening agent
+  // Mark this thread as read for the opening agent, creating a participant record if needed
   const agent = await getOrCreateAgent(db, decoded)
   if (agent) {
-    await db.threadParticipant.updateMany({
-      where: { threadId: id, agentId: agent.id },
-      data: { lastReadAt: new Date() },
-    })
+    const existing = await db.threadParticipant.findFirst({ where: { threadId: id, agentId: agent.id } })
+    if (existing) {
+      await db.threadParticipant.update({ where: { id: existing.id }, data: { lastReadAt: new Date() } })
+    } else {
+      await db.threadParticipant.create({
+        data: { threadId: id, agentId: agent.id, participantType: 'AGENT', lastReadAt: new Date() },
+      })
+    }
   }
 
   const thread = await db.thread.findUnique({

@@ -2,16 +2,26 @@ import type { PrismaClient } from '@prisma/client'
 import type { DecodedIdToken } from 'firebase-admin/auth'
 
 export async function getOrCreateAgent(db: PrismaClient, decoded: DecodedIdToken) {
-  // 1. Lookup by Firebase UID
-  let agent = await db.agent.findUnique({ where: { firebaseUid: decoded.uid } })
-  if (agent) return agent
+  const fbRole = decoded.role as string | undefined
 
-  // 2. Fallback: lookup by email, then link the UID
+  // 1. Lookup by Firebase UID — sync role if the Firebase claim has changed
+  let agent = await db.agent.findUnique({ where: { firebaseUid: decoded.uid } })
+  if (agent) {
+    if (fbRole && agent.role !== fbRole) {
+      agent = await db.agent.update({ where: { id: agent.id }, data: { role: fbRole } })
+    }
+    return agent
+  }
+
+  // 2. Fallback: lookup by email, then link the UID and sync role
   if (decoded.email) {
     agent = await db.agent.findUnique({ where: { email: decoded.email } })
     if (agent) {
       console.log('[get-agent] linking firebaseUid to existing agent', agent.id)
-      return db.agent.update({ where: { id: agent.id }, data: { firebaseUid: decoded.uid } })
+      return db.agent.update({
+        where: { id: agent.id },
+        data: { firebaseUid: decoded.uid, ...(fbRole ? { role: fbRole } : {}) },
+      })
     }
   }
 

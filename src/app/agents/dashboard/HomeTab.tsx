@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { motion, useMotionValue, useSpring, useTransform, type MotionValue } from 'framer-motion'
 import {
   Bot, Send, Plus, Check, X, Loader2, MessageSquare,
   Building2, Users, Eye, Bell, Sparkles, Megaphone,
@@ -18,7 +19,7 @@ type Pipeline = { activeListings: number; totalClients: number; viewingStage: nu
 const STARTER_PROMPTS = [
   "What's my morning brief?",
   "Which clients need follow-up?",
-  "Draft a viewing confirmation email",
+  "Any threads that need my attention?",
   "Suggest 5 tasks for today",
 ]
 
@@ -43,6 +44,7 @@ export function HomeTab({ getToken, displayName }: { getToken: () => Promise<str
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
+  const mouseX = useMotionValue(Infinity)
 
   // Persist todos in localStorage
   useEffect(() => {
@@ -390,51 +392,149 @@ export function HomeTab({ getToken, displayName }: { getToken: () => Promise<str
 
       {/* ── Agent Palette ── */}
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#64748b' }}>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: '#64748b' }}>
           AI Agent Palette
         </p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {PALETTE.map(({ name, icon: Icon, href, active, desc, soon }) => {
-            const isDevAssist = name === 'Dev Assist'
-            const showBadge = isDevAssist && newRequests > 0
-            const card = (
-              <div
-                className="relative rounded-xl p-3 border transition-all"
-                style={{
-                  background: active ? 'rgba(201,165,76,0.08)' : 'rgba(27,58,107,0.4)',
-                  borderColor: active ? 'rgba(201,165,76,0.3)' : showBadge ? 'rgba(248,113,113,0.3)' : 'rgba(255,255,255,0.08)',
-                  boxShadow: active ? '0 0 0 1px rgba(201,165,76,0.15)' : showBadge ? '0 0 0 1px rgba(248,113,113,0.15)' : 'none',
-                  opacity: soon ? 0.55 : 1,
-                  cursor: soon ? 'not-allowed' : href ? 'pointer' : 'default',
-                }}
-              >
-                {soon && (
-                  <span
-                    className="absolute top-2 right-2 text-[10px] rounded-full px-1.5 py-0.5"
-                    style={{ background: 'rgba(255,255,255,0.1)', color: '#93c5fd' }}
-                  >
-                    Soon
-                  </span>
-                )}
-                {showBadge && (
-                  <span
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                    style={{ background: '#f87171', color: 'white' }}
-                  >
-                    {newRequests}
-                  </span>
-                )}
-                <Icon size={18} style={{ color: active ? '#C9A54C' : showBadge ? '#fca5a5' : '#93c5fd' }} />
-                <p className="text-xs font-semibold mt-2" style={{ color: active ? '#C9A54C' : 'white' }}>{name}</p>
-                <p className="text-[10px] mt-0.5" style={{ color: '#64748b' }}>{desc}</p>
-              </div>
-            )
-            return href
-              ? <Link key={name} href={href}>{card}</Link>
-              : <div key={name}>{card}</div>
-          })}
+        {/* Mobile grid — no dock effect, cards fill their cells */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:hidden">
+          {PALETTE.map(({ name, icon, href, active, desc, soon }) => (
+            <DockItem
+              key={name}
+              mouseX={mouseX}
+              name={name}
+              icon={icon}
+              href={href}
+              active={active}
+              desc={desc}
+              soon={soon}
+              showBadge={name === 'Dev Assist' && newRequests > 0}
+              badgeCount={newRequests}
+              fill
+            />
+          ))}
+        </div>
+
+        {/* Desktop dock — magnification effect */}
+        <div
+          className="hidden md:flex items-end justify-center gap-4 pt-8 pb-2"
+          onMouseMove={e => mouseX.set(e.pageX)}
+          onMouseLeave={() => mouseX.set(Infinity)}
+        >
+          {PALETTE.map(({ name, icon, href, active, desc, soon }) => (
+            <DockItem
+              key={name}
+              mouseX={mouseX}
+              name={name}
+              icon={icon}
+              href={href}
+              active={active}
+              desc={desc}
+              soon={soon}
+              showBadge={name === 'Dev Assist' && newRequests > 0}
+              badgeCount={newRequests}
+            />
+          ))}
         </div>
       </div>
     </div>
+  )
+}
+
+// ─── Dock item ────────────────────────────────────────────────────────────────
+
+function DockItem({
+  mouseX,
+  name,
+  icon: Icon,
+  href,
+  active,
+  desc,
+  soon,
+  showBadge,
+  badgeCount,
+  fill = false,
+}: {
+  mouseX: MotionValue<number>
+  name: string
+  icon: React.ElementType
+  href: string | null
+  active: boolean
+  desc: string
+  soon?: boolean
+  showBadge?: boolean
+  badgeCount?: number
+  fill?: boolean
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  const distance = useTransform(mouseX, val => {
+    const bounds = ref.current?.getBoundingClientRect()
+    if (!bounds) return Infinity
+    return val - bounds.x - bounds.width / 2
+  })
+
+  const scale = useSpring(
+    useTransform(distance, [-160, 0, 160], [1, 1.6, 1], { clamp: true }),
+    { mass: 0.1, stiffness: 150, damping: 12 }
+  )
+
+  const y = useSpring(
+    useTransform(scale, [1, 1.6], [0, -12]),
+    { mass: 0.1, stiffness: 150, damping: 12 }
+  )
+
+  const inner = (
+    <div
+      className={`relative rounded-xl p-3 border flex flex-col ${fill ? 'w-full' : 'w-36'}`}
+      style={{
+        background: active ? 'rgba(201,165,76,0.08)' : 'rgba(27,58,107,0.4)',
+        borderColor: active
+          ? 'rgba(201,165,76,0.3)'
+          : showBadge
+          ? 'rgba(248,113,113,0.3)'
+          : 'rgba(255,255,255,0.08)',
+        boxShadow: active
+          ? '0 0 0 1px rgba(201,165,76,0.15)'
+          : showBadge
+          ? '0 0 0 1px rgba(248,113,113,0.15)'
+          : 'none',
+        opacity: soon ? 0.55 : 1,
+        cursor: soon ? 'not-allowed' : href ? 'pointer' : 'default',
+      }}
+    >
+      {soon && (
+        <span
+          className="absolute top-2 right-2 text-[10px] rounded-full px-1.5 py-0.5"
+          style={{ background: 'rgba(255,255,255,0.1)', color: '#93c5fd' }}
+        >
+          Soon
+        </span>
+      )}
+      {showBadge && (
+        <span
+          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+          style={{ background: '#f87171', color: 'white' }}
+        >
+          {badgeCount}
+        </span>
+      )}
+      <Icon size={18} style={{ color: active ? '#C9A54C' : showBadge ? '#fca5a5' : '#93c5fd' }} />
+      <p className="text-xs font-semibold mt-2 leading-tight" style={{ color: active ? '#C9A54C' : 'white' }}>
+        {name}
+      </p>
+      <p className="text-[10px] mt-0.5 leading-snug" style={{ color: '#64748b' }}>
+        {desc}
+      </p>
+    </div>
+  )
+
+  return (
+    <motion.div
+      ref={ref}
+      style={{ scale, y, transformOrigin: 'bottom center' }}
+      className={fill ? 'w-full' : undefined}
+    >
+      {href && !soon ? <Link href={href}>{inner}</Link> : inner}
+    </motion.div>
   )
 }
