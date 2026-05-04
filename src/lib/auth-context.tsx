@@ -19,6 +19,7 @@ const AuthContext = createContext<AuthContextType>({
 })
 
 const ROLE_KEY = 'mp_last_role'
+const SIGNOUT_KEY = 'mp_signed_out'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -26,8 +27,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Generation counter: if a newer callback fires before an older one completes,
-    // the older one's result is discarded. Prevents stale callbacks overwriting state.
     let gen = 0
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       const thisGen = ++gen
@@ -37,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (thisGen !== gen) return
           const resolvedRole = (token.claims.role as string) ?? null
           if (resolvedRole) localStorage.setItem(ROLE_KEY, resolvedRole)
+          localStorage.removeItem(SIGNOUT_KEY)
           setUser(firebaseUser)
           setRole(resolvedRole)
         } catch {
@@ -46,17 +46,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setLoading(false)
       } else {
-        // Firebase emits null on initial load before restoring session from IndexedDB.
-        // Poll every 250ms so we exit as soon as the real user arrives, up to a max wait.
-        // Max is 10s for returning users (localStorage key present), 3s for fresh sessions.
         setLoading(true)
-        const lastRole = typeof window !== 'undefined' ? localStorage.getItem(ROLE_KEY) : null
-        const maxWait = lastRole ? 10000 : 3000
-        const started = Date.now()
-        while (Date.now() - started < maxWait) {
-          await new Promise(resolve => setTimeout(resolve, 250))
-          if (thisGen !== gen) return
+
+        // If the user explicitly signed out, resolve immediately.
+        const explicitSignOut = typeof window !== 'undefined' && localStorage.getItem(SIGNOUT_KEY) === '1'
+        if (explicitSignOut) {
+          localStorage.removeItem(SIGNOUT_KEY)
+          localStorage.removeItem(ROLE_KEY)
+          setUser(null)
+          setRole(null)
+          setLoading(false)
+          return
         }
+
+        // Otherwise Firebase is restoring the session from IndexedDB —
+        // wait indefinitely (checking every 250ms) until the real user callback
+        // fires. There is no timeout: a logged-in user must never be kicked
+        // just because Firebase was slow. A 60s safety valve handles the
+        // extreme edge case of a truly dead session with no explicit sign-out.
+        const SAFETY_MS = 60_000
+        const started = Date.now()
+        while (Date.now() - started < SAFETY_MS) {
+          await new Promise(resolve => setTimeout(resolve, 250))
+          if (thisGen !== gen) return // real user callback fired — abort this branch
+        }
+
+        // 60 s elapsed with no user — treat as genuine session loss
         localStorage.removeItem(ROLE_KEY)
         setUser(null)
         setRole(null)
@@ -66,7 +81,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsub
   }, [])
 
-  const signOut = () => firebaseSignOut(auth)
+  const signOut = async () => {
+    localStorage.setItem(SIGNOUT_KEY, '1')
+    await firebaseSignOut(auth)
+  }
 
   return (
     <AuthContext.Provider value={{ user, loading, signOut, role }}>
